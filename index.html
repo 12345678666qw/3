@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在线抽奖系统 - 支持姓名抽取</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            padding: 30px;
+            overflow: hidden;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #6a11cb, #2575fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .subtitle {
+            color: #7f8c8d;
+            font-size: 1.1rem;
+        }
+        
+        .main-content {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+        }
+        
+        .control-panel {
+            flex: 1;
+            min-width: 300px;
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+        
+        .result-display {
+            flex: 2;
+            min-width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .result-box {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+        
+        .winner-display {
+            font-size: 4rem;
+            font-weight: bold;
+            color: #e74c3c;
+            height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f9f9f9;
+            border-radius: 10px;
+            margin: 15px 0;
+            transition: all 0.3s;
+            border: 2px dashed #ddd;
+        }
+        
+        .winner-display.rolling {
+            animation: pulse 0.5s infinite alternate;
+            color: #3498db;
+        }
+        
+        @keyframes pulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.05); }
+        }
+        
+        .control-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border 0.3s;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            border-color: #3498db;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+        }
+        
+        button {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .start-btn {
+            background: linear-gradient(90deg, #2ecc71, #1abc9c);
+            color: white;
+        }
+        
+        .start-btn:hover {
+            background: linear-gradient(90deg, #27ae60, #16a085);
+            transform: translateY(-2px);
+        }
+        
+        .reset-btn {
+            background: linear-gradient(90deg, #e74c3c, #c0392b);
+            color: white;
+        }
+        
+        .reset-btn:hover {
+            background: linear-gradient(90deg, #c0392b, #a93226);
+            transform: translateY(-2px);
+        }
+        
+        .secondary-btn {
+            background: linear-gradient(90deg, #3498db, #2980b9);
+            color: white;
+        }
+        
+        .secondary-btn:hover {
+            background: linear-gradient(90deg, #2980b9, #2471a3);
+            transform: translateY(-2px);
+        }
+        
+        .history-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+        
+        .history-title {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            color: #2c3e50;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .winners-list {
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .winner-item {
+            padding: 10px 15px;
+            margin-bottom: 8px;
+            background: white;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+        
+        .winner-item:nth-child(odd) {
+            background: #f1f8ff;
+        }
+        
+        .winner-number {
+            font-weight: bold;
+            color: #e74c3c;
+        }
+        
+        .winner-time {
+            color: #7f8c8d;
+            font-size: 0.85rem;
+        }
+        
+        .clear-history {
+            background: #95a5a6;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        
+        .clear-history:hover {
+            background: #7f8c8d;
+        }
+        
+        .settings-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .setting-item {
+            flex: 1;
+            min-width: 120px;
+        }
+        
+        .tab-container {
+            margin-bottom: 20px;
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #e0e0e0;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            padding: 12px 20px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #7f8c8d;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+        }
+        
+        .tab.active {
+            color: #3498db;
+            border-bottom: 3px solid #3498db;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        textarea {
+            height: 150px;
+            resize: vertical;
+        }
+        
+        .name-list-info {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+        
+        .utility-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .utility-btn {
+            padding: 8px 15px;
+            font-size: 0.9rem;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            .utility-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>在线抽奖系统</h1>
+            <p class="subtitle">支持编号抽取和自定义姓名抽取</p>
+        </header>
+        
+        <div class="main-content">
+            <div class="control-panel">
+                <div class="tab-container">
+                    <div class="tabs">
+                        <div class="tab active" data-tab="number">编号抽奖</div>
+                        <div class="tab" data-tab="name">姓名抽奖</div>
+                    </div>
+                    
+                    <!-- 编号抽奖选项卡 -->
+                    <div class="tab-content active" id="number-tab">
+                        <div class="control-group">
+                            <label for="participants">参与抽奖人数</label>
+                            <input type="number" id="participants" min="2" max="10000" value="100" placeholder="请输入参与人数">
+                        </div>
+                        
+                        <div class="control-group">
+                            <label for="prize-count">中奖人数</label>
+                            <input type="number" id="prize-count" min="1" max="10" value="1" placeholder="请输入中奖人数">
+                        </div>
+                        
+                        <div class="control-group">
+                            <label for="mode">抽奖模式</label>
+                            <select id="mode">
+                                <option value="single">单次抽奖</option>
+                                <option value="multiple">多次抽奖（不重复）</option>
+                                <option value="lucky">幸运数字模式</option>
+                            </select>
+                        </div>
+                        
+                        <div class="settings-group">
+                            <div class="setting-item">
+                                <label for="min-number">起始编号</label>
+                                <input type="number" id="min-number" value="1" min="1" max="9999">
+                            </div>
+                            
+                            <div class="setting-item">
+                                <label for="max-number">结束编号</label>
+                                <input type="number" id="max-number" value="100" min="2" max="10000">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 姓名抽奖选项卡 -->
+                    <div class="tab-content" id="name-tab">
+                        <div class="control-group">
+                            <label for="name-list">参与者姓名列表</label>
+                            <textarea id="name-list" placeholder="请输入参与者姓名，每行一个姓名"></textarea>
+                            <p class="name-list-info">已输入 <span id="name-count">0</span> 个姓名</p>
+                        </div>
+                        
+                        <div class="utility-buttons">
+                            <button class="secondary-btn utility-btn" id="import-names">导入示例</button>
+                            <button class="secondary-btn utility-btn" id="clear-names">清空列表</button>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label for="name-prize-count">中奖人数</label>
+                            <input type="number" id="name-prize-count" min="1" max="10" value="1" placeholder="请输入中奖人数">
+                        </div>
+                        
+                        <div class="control-group">
+                            <label for="name-mode">抽奖模式</label>
+                            <select id="name-mode">
+                                <option value="single">单次抽奖</option>
+                                <option value="multiple">多次抽奖（不重复）</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="button-group">
+                    <button class="start-btn" id="start-btn">开始抽奖</button>
+                    <button class="reset-btn" id="reset-btn">重置</button>
+                </div>
+            </div>
+            
+            <div class="result-display">
+                <div class="result-box">
+                    <h2>抽奖结果</h2>
+                    <div class="winner-display" id="winner-display">
+                        等待抽奖...
+                    </div>
+                    <p id="result-info">请选择抽奖模式并设置参数</p>
+                </div>
+                
+                <div class="history-panel">
+                    <div class="history-title">
+                        <span>中奖记录</span>
+                        <button class="clear-history" id="clear-history">清空记录</button>
+                    </div>
+                    <div class="winners-list" id="winners-list">
+                        <!-- 中奖记录将在这里显示 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>© 2023 在线抽奖系统 | 支持编号和姓名抽取 | 设计：随机公平算法</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取DOM元素
+            const participantsInput = document.getElementById('participants');
+            const prizeCountInput = document.getElementById('prize-count');
+            const modeSelect = document.getElementById('mode');
+            const minNumberInput = document.getElementById('min-number');
+            const maxNumberInput = document.getElementById('max-number');
+            const nameListTextarea = document.getElementById('name-list');
+            const nameCountSpan = document.getElementById('name-count');
+            const namePrizeCountInput = document.getElementById('name-prize-count');
+            const nameModeSelect = document.getElementById('name-mode');
+            const startBtn = document.getElementById('start-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const winnerDisplay = document.getElementById('winner-display');
+            const resultInfo = document.getElementById('result-info');
+            const winnersList = document.getElementById('winners-list');
+            const clearHistoryBtn = document.getElementById('clear-history');
+            const importNamesBtn = document.getElementById('import-names');
+            const clearNamesBtn = document.getElementById('clear-names');
+            const tabs = document.querySelectorAll('.tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            // 抽奖状态变量
+            let isRolling = false;
+            let rollInterval;
+            let winners = [];
+            let currentMode = 'number'; // 当前模式：number 或 name
+            
+            // 从本地存储加载中奖记录
+            loadWinnersHistory();
+            
+            // 初始化姓名列表
+            loadNameList();
+            
+            // 选项卡切换
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const tabId = this.getAttribute('data-tab');
+                    
+                    // 更新选项卡状态
+                    tabs.forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // 更新内容显示
+                    tabContents.forEach(content => {
+                        content.classList.remove('active');
+                        if (content.id === `${tabId}-tab`) {
+                            content.classList.add('active');
+                        }
+                    });
+                    
+                    // 更新当前模式
+                    currentMode = tabId;
+                    
+                    // 重置抽奖状态
+                    resetLottery();
+                });
+            });
+            
+            // 同步参与人数和编号范围
+            participantsInput.addEventListener('change', function() {
+                maxNumberInput.value = this.value;
+            });
+            
+            maxNumberInput.addEventListener('change', function() {
+                participantsInput.value = this.value;
+            });
+            
+            // 更新姓名计数
+            nameListTextarea.addEventListener('input', function() {
+                updateNameCount();
+                saveNameList();
+            });
+            
+            // 导入示例姓名
+            importNamesBtn.addEventListener('click', function() {
+                const exampleNames = [
+                    "张三", "李四", "王五", "赵六", "钱七", 
+                    "孙八", "周九", "吴十", "郑十一", "王十二",
+                    "刘十三", "陈十四", "杨十五", "黄十六", "赵十七",
+                    "周十八", "吴十九", "郑二十", "孙二十一", "李二十二"
+                ];
+                
+                nameListTextarea.value = exampleNames.join('\n');
+                updateNameCount();
+                saveNameList();
+            });
+            
+            // 清空姓名列表
+            clearNamesBtn.addEventListener('click', function() {
+                nameListTextarea.value = '';
+                updateNameCount();
+                saveNameList();
+            });
+            
+            // 开始/停止抽奖
+            startBtn.addEventListener('click', function() {
+                if (isRolling) {
+                    stopRolling();
+                } else {
+                    startRolling();
+                }
+            });
+            
+            // 重置抽奖
+            resetBtn.addEventListener('click', function() {
+                resetLottery();
+            });
+            
+            // 清空中奖记录
+            clearHistoryBtn.addEventListener('click', function() {
+                winners = [];
+                updateWinnersList();
+                saveWinnersHistory();
+            });
+            
+            // 开始抽奖
+            function startRolling() {
+                let participants, prizeCount, mode, minNumber, maxNumber;
+                let nameList = [];
+                
+                if (currentMode === 'number') {
+                    // 编号抽奖模式
+                    participants = parseInt(participantsInput.value);
+                    prizeCount = parseInt(prizeCountInput.value);
+                    mode = modeSelect.value;
+                    minNumber = parseInt(minNumberInput.value);
+                    maxNumber = parseInt(maxNumberInput.value);
+                    
+                    // 验证输入
+                    if (isNaN(participants) || participants < 2) {
+                        alert('请输入有效的参与人数（至少2人）');
+                        return;
+                    }
+                    
+                    if (minNumber >= maxNumber) {
+                        alert('起始编号必须小于结束编号');
+                        return;
+                    }
+                    
+                    if (prizeCount > participants) {
+                        alert('中奖人数不能超过参与人数');
+                        return;
+                    }
+                } else {
+                    // 姓名抽奖模式
+                    const nameText = nameListTextarea.value.trim();
+                    if (nameText === '') {
+                        alert('请输入参与者姓名列表');
+                        return;
+                    }
+                    
+                    nameList = nameText.split('\n').filter(name => name.trim() !== '');
+                    prizeCount = parseInt(namePrizeCountInput.value);
+                    mode = nameModeSelect.value;
+                    
+                    // 验证输入
+                    if (nameList.length < 2) {
+                        alert('至少需要输入2个姓名');
+                        return;
+                    }
+                    
+                    if (prizeCount > nameList.length) {
+                        alert('中奖人数不能超过参与者人数');
+                        return;
+                    }
+                }
+                
+                // 更新UI状态
+                isRolling = true;
+                startBtn.textContent = '停止抽奖';
+                winnerDisplay.classList.add('rolling');
+                resultInfo.textContent = '抽奖进行中...';
+                
+                // 开始滚动
+                let rollCount = 0;
+                const maxRollCount = 30;
+                
+                rollInterval = setInterval(function() {
+                    let randomResults = [];
+                    
+                    for (let i = 0; i < prizeCount; i++) {
+                        let result;
+                        
+                        if (currentMode === 'number') {
+                            // 编号抽奖逻辑
+                            if (mode === 'multiple' && winners.length > 0) {
+                                // 多次抽奖模式，排除已中奖者
+                                do {
+                                    result = Math.floor(Math.random() * (maxNumber - minNumber + 1)) + minNumber;
+                                } while (winners.includes(result.toString()) && winners.length < (maxNumber - minNumber + 1));
+                            } else {
+                                result = Math.floor(Math.random() * (maxNumber - minNumber + 1)) + minNumber;
+                            }
+                        } else {
+                            // 姓名抽奖逻辑
+                            if (mode === 'multiple' && winners.length > 0) {
+                                // 多次抽奖模式，排除已中奖者
+                                const availableNames = nameList.filter(name => !winners.includes(name));
+                                if (availableNames.length === 0) {
+                                    result = "无更多参与者";
+                                } else {
+                                    const randomIndex = Math.floor(Math.random() * availableNames.length);
+                                    result = availableNames[randomIndex];
+                                }
+                            } else {
+                                const randomIndex = Math.floor(Math.random() * nameList.length);
+                                result = nameList[randomIndex];
+                            }
+                        }
+                        
+                        randomResults.push(result);
+                    }
+                    
+                    winnerDisplay.textContent = randomResults.join(', ');
+                    
+                    rollCount++;
+                    if (rollCount >= maxRollCount) {
+                        stopRolling();
+                    }
+                }, 100);
+            }
+            
+            // 停止抽奖
+            function stopRolling() {
+                clearInterval(rollInterval);
+                
+                let prizeCount, mode;
+                let nameList = [];
+                
+                if (currentMode === 'number') {
+                    // 编号抽奖模式
+                    const minNumber = parseInt(minNumberInput.value);
+                    const maxNumber = parseInt(maxNumberInput.value);
+                    prizeCount = parseInt(prizeCountInput.value);
+                    mode = modeSelect.value;
+                    
+                    // 生成最终中奖号码
+                    const finalWinners = [];
+                    
+                    for (let i = 0; i < prizeCount; i++) {
+                        let winner;
+                        
+                        if (mode === 'multiple') {
+                            // 多次抽奖模式，确保不重复
+                            do {
+                                winner = Math.floor(Math.random() * (maxNumber - minNumber + 1)) + minNumber;
+                            } while (winners.includes(winner.toString()) && winners.length < (maxNumber - minNumber + 1));
+                        } else {
+                            winner = Math.floor(Math.random() * (maxNumber - minNumber + 1)) + minNumber;
+                        }
+                        
+                        finalWinners.push(winner);
+                        
+                        // 记录中奖者（幸运数字模式不记录）
+                        if (mode !== 'lucky') {
+                            winners.push(winner.toString());
+                        }
+                    }
+                    
+                    // 更新UI
+                    winnerDisplay.textContent = finalWinners.join(', ');
+                    
+                    // 更新结果信息
+                    if (mode === 'lucky') {
+                        resultInfo.textContent = `恭喜幸运数字 ${finalWinners.join(', ')}！`;
+                    } else {
+                        resultInfo.textContent = `恭喜 ${finalWinners.join(', ')} 号中奖！`;
+                        updateWinnersList();
+                        saveWinnersHistory();
+                    }
+                } else {
+                    // 姓名抽奖模式
+                    const nameText = nameListTextarea.value.trim();
+                    nameList = nameText.split('\n').filter(name => name.trim() !== '');
+                    prizeCount = parseInt(namePrizeCountInput.value);
+                    mode = nameModeSelect.value;
+                    
+                    // 生成最终中奖姓名
+                    const finalWinners = [];
+                    
+                    for (let i = 0; i < prizeCount; i++) {
+                        let winner;
+                        
+                        if (mode === 'multiple') {
+                            // 多次抽奖模式，确保不重复
+                            const availableNames = nameList.filter(name => !winners.includes(name));
+                            if (availableNames.length === 0) {
+                                winner = "无更多参与者";
+                            } else {
+                                const randomIndex = Math.floor(Math.random() * availableNames.length);
+                                winner = availableNames[randomIndex];
+                            }
+                        } else {
+                            const randomIndex = Math.floor(Math.random() * nameList.length);
+                            winner = nameList[randomIndex];
+                        }
+                        
+                        finalWinners.push(winner);
+                        
+                        // 记录中奖者
+                        if (winner !== "无更多参与者") {
+                            winners.push(winner);
+                        }
+                    }
+                    
+                    // 更新UI
+                    winnerDisplay.textContent = finalWinners.join(', ');
+                    
+                    // 更新结果信息
+                    if (finalWinners.includes("无更多参与者")) {
+                        resultInfo.textContent = `恭喜 ${finalWinners.filter(w => w !== "无更多参与者").join(', ')} 中奖！(已无更多参与者)`;
+                    } else {
+                        resultInfo.textContent = `恭喜 ${finalWinners.join(', ')} 中奖！`;
+                    }
+                    
+                    updateWinnersList();
+                    saveWinnersHistory();
+                }
+                
+                // 恢复UI状态
+                winnerDisplay.classList.remove('rolling');
+                isRolling = false;
+                startBtn.textContent = '开始抽奖';
+            }
+            
+            // 重置抽奖
+            function resetLottery() {
+                if (isRolling) {
+                    clearInterval(rollInterval);
+                    isRolling = false;
+                    startBtn.textContent = '开始抽奖';
+                }
+                
+                winnerDisplay.textContent = '等待抽奖...';
+                winnerDisplay.classList.remove('rolling');
+                resultInfo.textContent = '请选择抽奖模式并设置参数';
+            }
+            
+            // 更新中奖名单
+            function updateWinnersList() {
+                winnersList.innerHTML = '';
+                
+                if (winners.length === 0) {
+                    winnersList.innerHTML = '<div class="winner-item">暂无中奖记录</div>';
+                    return;
+                }
+                
+                // 只显示最近20条记录
+                const recentWinners = winners.slice(-20);
+                
+                recentWinners.forEach((winner, index) => {
+                    const winnerItem = document.createElement('div');
+                    winnerItem.className = 'winner-item';
+                    
+                    const now = new Date();
+                    const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+                    
+                    winnerItem.innerHTML = `
+                        <span class="winner-number">${winner}</span>
+                        <span class="winner-time">${timeString}</span>
+                    `;
+                    
+                    winnersList.appendChild(winnerItem);
+                });
+                
+                // 滚动到底部
+                winnersList.scrollTop = winnersList.scrollHeight;
+            }
+            
+            // 保存中奖记录到本地存储
+            function saveWinnersHistory() {
+                localStorage.setItem('lotteryWinners', JSON.stringify(winners));
+            }
+            
+            // 从本地存储加载中奖记录
+            function loadWinnersHistory() {
+                const savedWinners = localStorage.getItem('lotteryWinners');
+                if (savedWinners) {
+                    winners = JSON.parse(savedWinners);
+                    updateWinnersList();
+                }
+            }
+            
+            // 更新姓名计数
+            function updateNameCount() {
+                const nameText = nameListTextarea.value.trim();
+                const names = nameText === '' ? [] : nameText.split('\n').filter(name => name.trim() !== '');
+                nameCountSpan.textContent = names.length;
+            }
+            
+            // 保存姓名列表到本地存储
+            function saveNameList() {
+                localStorage.setItem('lotteryNames', nameListTextarea.value);
+            }
+            
+            // 从本地存储加载姓名列表
+            function loadNameList() {
+                const savedNames = localStorage.getItem('lotteryNames');
+                if (savedNames) {
+                    nameListTextarea.value = savedNames;
+                    updateNameCount();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
