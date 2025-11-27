@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>梨园抽奖系统</title>
+    <title>256抽奖系统</title>
     <style>
         * {
             margin: 0;
@@ -17,21 +17,6 @@
             color: #2e7d32;
             min-height: 100vh;
             padding: 20px;
-            position: relative;
-            overflow-x: hidden;
-        }
-        
-        body::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><path d="M30,30 Q50,10 70,30 T90,50 T70,70 T50,90 T30,70 T10,50 T30,30 Z" fill="none" stroke="%2381c784" stroke-width="1" opacity="0.3"/></svg>');
-            background-size: 200px;
-            opacity: 0.2;
-            z-index: -1;
         }
         
         .container {
@@ -41,20 +26,7 @@
             border-radius: 15px;
             box-shadow: 0 10px 30px rgba(76, 175, 80, 0.2);
             padding: 30px;
-            overflow: hidden;
-            position: relative;
             border: 1px solid #c8e6c9;
-        }
-        
-        .container::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 8px;
-            background: linear-gradient(90deg, #4caf50, #8bc34a, #cddc39);
-            border-radius: 15px 15px 0 0;
         }
         
         header {
@@ -62,32 +34,17 @@
             margin-bottom: 30px;
             padding-bottom: 20px;
             border-bottom: 1px dashed #c8e6c9;
-            position: relative;
         }
         
         h1 {
             color: #2e7d32;
             font-size: 2.5rem;
             margin-bottom: 10px;
-            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
-            position: relative;
-            display: inline-block;
-        }
-        
-        h1::after {
-            content: "";
-            position: absolute;
-            bottom: -10px;
-            left: 25%;
-            width: 50%;
-            height: 3px;
-            background: linear-gradient(90deg, transparent, #4caf50, transparent);
         }
         
         .subtitle {
             color: #558b2f;
             font-size: 1.1rem;
-            margin-top: 15px;
         }
         
         .main-content {
@@ -102,7 +59,6 @@
             background: #f1f8e9;
             padding: 25px;
             border-radius: 12px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
             border: 1px solid #dcedc8;
         }
         
@@ -118,7 +74,6 @@
             background: white;
             border-radius: 12px;
             padding: 25px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
             text-align: center;
             border: 1px solid #e8f5e9;
         }
@@ -134,7 +89,6 @@
             background: #f9f9f9;
             border-radius: 10px;
             margin: 15px 0;
-            transition: all 0.3s;
             border: 2px dashed #c8e6c9;
             background: linear-gradient(135deg, #f1f8e9, #ffffff);
         }
@@ -166,14 +120,7 @@
             border: 1px solid #c8e6c9;
             border-radius: 8px;
             font-size: 1rem;
-            transition: border 0.3s;
             background: white;
-        }
-        
-        input:focus, select:focus, textarea:focus {
-            border-color: #4caf50;
-            outline: none;
-            box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
         }
         
         .button-group {
@@ -200,8 +147,6 @@
         
         .start-btn:hover {
             background: linear-gradient(90deg, #43a047, #5cb860);
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
         }
         
         .reset-btn {
@@ -211,8 +156,6 @@
         
         .reset-btn:hover {
             background: linear-gradient(90deg, #e53935, #ef5350);
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(239, 83, 80, 0.3);
         }
         
         .secondary-btn {
@@ -220,16 +163,10 @@
             color: white;
         }
         
-        .secondary-btn:hover {
-            background: linear-gradient(90deg, #66bb6a, #81c784);
-            transform: translateY(-2px);
-        }
-        
         .history-panel {
             background: white;
             border-radius: 12px;
             padding: 20px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
             border: 1px solid #e8f5e9;
         }
         
@@ -257,7 +194,6 @@
             border-radius: 6px;
             display: flex;
             justify-content: space-between;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
             border-left: 4px solid #4caf50;
         }
         
@@ -283,10 +219,6 @@
             border-radius: 4px;
             cursor: pointer;
             font-size: 0.8rem;
-        }
-        
-        .clear-history:hover {
-            background: #81c784;
         }
         
         .settings-group {
@@ -364,28 +296,6 @@
             border-top: 1px dashed #c8e6c9;
         }
         
-        .decoration {
-            position: absolute;
-            width: 100px;
-            height: 100px;
-            opacity: 0.1;
-            z-index: -1;
-        }
-        
-        .decoration-1 {
-            top: 10%;
-            left: 5%;
-            background: radial-gradient(circle, #4caf50 10%, transparent 11%);
-            background-size: 20px 20px;
-        }
-        
-        .decoration-2 {
-            bottom: 10%;
-            right: 5%;
-            background: radial-gradient(circle, #4caf50 10%, transparent 11%);
-            background-size: 15px 15px;
-        }
-        
         @media (max-width: 768px) {
             .main-content {
                 flex-direction: column;
@@ -406,9 +316,6 @@
     </style>
 </head>
 <body>
-    <div class="decoration decoration-1"></div>
-    <div class="decoration decoration-2"></div>
-    
     <div class="container">
         <header>
             <h1>256抽奖系统</h1>
@@ -435,15 +342,6 @@
                             <input type="number" id="prize-count" min="1" max="10" value="1" placeholder="请输入中奖人数">
                         </div>
                         
-                        <div class="control-group">
-                            <label for="mode">抽奖模式</label>
-                            <select id="mode">
-                                <option value="single">单次抽奖</option>
-                                <option value="multiple">多次抽奖（不重复）</option>
-                                <option value="lucky">幸运数字模式</option>
-                            </select>
-                        </div>
-                        
                         <div class="settings-group">
                             <div class="setting-item">
                                 <label for="min-number">起始编号</label>
@@ -466,21 +364,12 @@
                         </div>
                         
                         <div class="utility-buttons">
-                            <button class="secondary-btn utility-btn" id="import-names">导入示例</button>
                             <button class="secondary-btn utility-btn" id="clear-names">清空列表</button>
                         </div>
                         
                         <div class="control-group">
                             <label for="name-prize-count">中奖人数</label>
                             <input type="number" id="name-prize-count" min="1" max="10" value="1" placeholder="请输入中奖人数">
-                        </div>
-                        
-                        <div class="control-group">
-                            <label for="name-mode">抽奖模式</label>
-                            <select id="name-mode">
-                                <option value="single">单次抽奖</option>
-                                <option value="multiple">多次抽奖（不重复）</option>
-                            </select>
                         </div>
                     </div>
                 </div>
@@ -522,20 +411,17 @@
             // 获取DOM元素
             const participantsInput = document.getElementById('participants');
             const prizeCountInput = document.getElementById('prize-count');
-            const modeSelect = document.getElementById('mode');
             const minNumberInput = document.getElementById('min-number');
             const maxNumberInput = document.getElementById('max-number');
             const nameListTextarea = document.getElementById('name-list');
             const nameCountSpan = document.getElementById('name-count');
             const namePrizeCountInput = document.getElementById('name-prize-count');
-            const nameModeSelect = document.getElementById('name-mode');
             const startBtn = document.getElementById('start-btn');
             const resetBtn = document.getElementById('reset-btn');
             const winnerDisplay = document.getElementById('winner-display');
             const resultInfo = document.getElementById('result-info');
             const winnersList = document.getElementById('winners-list');
             const clearHistoryBtn = document.getElementById('clear-history');
-            const importNamesBtn = document.getElementById('import-names');
             const clearNamesBtn = document.getElementById('clear-names');
             const tabs = document.querySelectorAll('.tab');
             const tabContents = document.querySelectorAll('.tab-content');
@@ -592,20 +478,6 @@
                 saveNameList();
             });
             
-            // 导入示例姓名
-            importNamesBtn.addEventListener('click', function() {
-                const exampleNames = [
-                    "香美依吉莉", "普通的梨园", "任奇丽", "王梨园", "李春花",
-                    "张秋月", "赵冬梅", "刘夏荷", "陈春兰", "杨秋菊",
-                    "黄冬青", "周春华", "吴秋实", "郑冬雪", "孙春晓",
-                    "朱秋韵", "秦冬阳", "尤春晖", "许秋枫", "何冬雨"
-                ];
-                
-                nameListTextarea.value = exampleNames.join('\n');
-                updateNameCount();
-                saveNameList();
-            });
-            
             // 清空姓名列表
             clearNamesBtn.addEventListener('click', function() {
                 nameListTextarea.value = '';
@@ -636,14 +508,13 @@
             
             // 开始抽奖
             function startRolling() {
-                let participants, prizeCount, mode, minNumber, maxNumber;
+                let participants, prizeCount, minNumber, maxNumber;
                 let nameList = [];
                 
                 if (currentMode === 'number') {
                     // 编号抽奖模式
                     participants = parseInt(participantsInput.value);
                     prizeCount = parseInt(prizeCountInput.value);
-                    mode = modeSelect.value;
                     minNumber = parseInt(minNumberInput.value);
                     maxNumber = parseInt(maxNumberInput.value);
                     
@@ -672,7 +543,6 @@
                     
                     nameList = nameText.split('\n').filter(name => name.trim() !== '');
                     prizeCount = parseInt(namePrizeCountInput.value);
-                    mode = nameModeSelect.value;
                     
                     // 验证输入
                     if (nameList.length < 2) {
@@ -704,28 +574,17 @@
                         
                         if (currentMode === 'number') {
                             // 编号抽奖逻辑
-                            if (mode === 'multiple' && winners.length > 0) {
-                                // 多次抽奖模式，排除已中奖者
-                                do {
-                                    result = Math.floor(Math.random() * (maxNumber - minNumber + 1)) + minNumber;
-                                } while (winners.includes(result.toString()) && winners.length < (maxNumber - minNumber + 1));
-                            } else {
+                            do {
                                 result = Math.floor(Math.random() * (maxNumber - minNumber + 1)) + minNumber;
-                            }
+                            } while (winners.includes(result.toString()) && winners.length < (maxNumber - minNumber + 1));
                         } else {
                             // 姓名抽奖逻辑
-                            if (mode === 'multiple' && winners.length > 0) {
-                                // 多次抽奖模式，排除已中奖者
-                                const availableNames = nameList.filter(name => !winners.includes(name));
-                                if (availableNames.length === 0) {
-                                    result = "无更多参与者";
-                                } else {
-                                    const randomIndex = Math.floor(Math.random() * availableNames.length);
-                                    result = availableNames[randomIndex];
-                                }
+                            const availableNames = nameList.filter(name => !winners.includes(name));
+                            if (availableNames.length === 0) {
+                                result = "无更多参与者";
                             } else {
-                                const randomIndex = Math.floor(Math.random() * nameList.length);
-                                result = nameList[randomIndex];
+                                const randomIndex = Math.floor(Math.random() * availableNames.length);
+                                result = availableNames[randomIndex];
                             }
                         }
                         
@@ -745,7 +604,7 @@
             function stopRolling() {
                 clearInterval(rollInterval);
                 
-                let prizeCount, mode;
+                let prizeCount;
                 let nameList = [];
                 
                 if (currentMode === 'number') {
@@ -753,7 +612,6 @@
                     const minNumber = parseInt(minNumberInput.value);
                     const maxNumber = parseInt(maxNumberInput.value);
                     prizeCount = parseInt(prizeCountInput.value);
-                    mode = modeSelect.value;
                     
                     // 生成最终中奖号码
                     const finalWinners = [];
@@ -761,40 +619,24 @@
                     for (let i = 0; i < prizeCount; i++) {
                         let winner;
                         
-                        if (mode === 'multiple') {
-                            // 多次抽奖模式，确保不重复
-                            do {
-                                winner = Math.floor(Math.random() * (maxNumber - minNumber + 1)) + minNumber;
-                            } while (winners.includes(winner.toString()) && winners.length < (maxNumber - minNumber + 1));
-                        } else {
+                        do {
                             winner = Math.floor(Math.random() * (maxNumber - minNumber + 1)) + minNumber;
-                        }
+                        } while (winners.includes(winner.toString()) && winners.length < (maxNumber - minNumber + 1));
                         
                         finalWinners.push(winner);
-                        
-                        // 记录中奖者（幸运数字模式不记录）
-                        if (mode !== 'lucky') {
-                            winners.push(winner.toString());
-                        }
+                        winners.push(winner.toString());
                     }
                     
                     // 更新UI
                     winnerDisplay.textContent = finalWinners.join(', ');
-                    
-                    // 更新结果信息
-                    if (mode === 'lucky') {
-                        resultInfo.textContent = `恭喜幸运数字 ${finalWinners.join(', ')}！`;
-                    } else {
-                        resultInfo.textContent = `恭喜 ${finalWinners.join(', ')} 号中奖！`;
-                        updateWinnersList();
-                        saveWinnersHistory();
-                    }
+                    resultInfo.textContent = `恭喜 ${finalWinners.join(', ')} 号中奖！`;
+                    updateWinnersList();
+                    saveWinnersHistory();
                 } else {
                     // 姓名抽奖模式
                     const nameText = nameListTextarea.value.trim();
                     nameList = nameText.split('\n').filter(name => name.trim() !== '');
                     prizeCount = parseInt(namePrizeCountInput.value);
-                    mode = nameModeSelect.value;
                     
                     // 生成最终中奖姓名
                     const finalWinners = [];
@@ -802,18 +644,12 @@
                     for (let i = 0; i < prizeCount; i++) {
                         let winner;
                         
-                        if (mode === 'multiple') {
-                            // 多次抽奖模式，确保不重复
-                            const availableNames = nameList.filter(name => !winners.includes(name));
-                            if (availableNames.length === 0) {
-                                winner = "无更多参与者";
-                            } else {
-                                const randomIndex = Math.floor(Math.random() * availableNames.length);
-                                winner = availableNames[randomIndex];
-                            }
+                        const availableNames = nameList.filter(name => !winners.includes(name));
+                        if (availableNames.length === 0) {
+                            winner = "无更多参与者";
                         } else {
-                            const randomIndex = Math.floor(Math.random() * nameList.length);
-                            winner = nameList[randomIndex];
+                            const randomIndex = Math.floor(Math.random() * availableNames.length);
+                            winner = availableNames[randomIndex];
                         }
                         
                         finalWinners.push(winner);
