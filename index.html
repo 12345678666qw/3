@@ -1,783 +1,500 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Interactive Natural Fireworks with Shapes, Audio & Controls</title>
-  <style>
-    :root {
-      --panel-w: 360px;
-      --bg: #0b0b0d;
-      --panel-bg: rgba(10,10,12,0.92);
-      --accent: #ff7b7b;
-      --muted: #bfc3c7;
-    }
-    html,body { height:100%; margin:0; background:var(--bg); color:#eee; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; -webkit-font-smoothing:antialiased; }
-    canvas { display:block; width:100vw; height:100vh; cursor:crosshair; background:transparent; }
-    .panel {
-      position: fixed;
-      right: 14px;
-      top: 14px;
-      width: var(--panel-w);
-      max-height: calc(100vh - 28px);
-      overflow: auto;
-      background: var(--panel-bg);
-      border-radius: 10px;
-      padding: 12px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-      backdrop-filter: blur(6px);
-      z-index: 40;
-    }
-    .panel h3 { margin:0 0 8px 0; font-size:15px; color:#fff; }
-    .row { display:flex; align-items:center; gap:10px; margin:9px 0; }
-    .row label { flex:1; font-size:13px; color:var(--muted); }
-    .row input[type="range"] { width:140px; }
-    .small { font-size:12px; color:var(--muted); }
-    .controls { display:flex; gap:8px; margin-top:8px; }
-    .btn {
-      padding:8px 10px; border-radius:8px; background:rgba(255,255,255,0.04); color:#fff; border:1px solid rgba(255,255,255,0.04);
-      font-size:13px; cursor:pointer;
-    }
-    .btn.primary { background: linear-gradient(90deg,#ff8a8a,#ffb27b); color:#111; border:none; }
-    .style-list, .pattern-list { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
-    .style-item, .pattern-item { padding:6px 8px; border-radius:8px; background:rgba(255,255,255,0.03); font-size:12px; cursor:pointer; user-select:none; }
-    .style-item.active, .pattern-item.active { box-shadow: inset 0 -2px 0 rgba(255,255,255,0.06); background: rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.04); }
-    .footer { margin-top:10px; font-size:12px; color:var(--muted); text-align:center; }
-    .top-left-hint {
-      position: fixed; left: 14px; top: 14px; color:#ddd; background: rgba(0,0,0,0.25); padding:8px 10px; border-radius:8px; font-size:13px;
-      pointer-events:none; z-index:30;
-    }
-    .file-input { display:flex; gap:8px; align-items:center; }
-    input[type="file"] { display: none; }
-    .kv { display:flex; justify-content:space-between; font-size:12px; color:var(--muted); }
-    .toggle-row { display:flex; align-items:center; gap:8px; }
-    .checkbox { width:18px; height:18px; border-radius:4px; border:1px solid rgba(255,255,255,0.08); display:inline-block; background:transparent; cursor:pointer; }
-    .checkbox.checked { background: linear-gradient(90deg,#7ef0ff,#7ee7a9); border:none; }
-    .status { font-size:12px; color:#cbd5de; max-width:190px; }
-    .label-strong { color:#fff; font-weight:600; font-size:13px; }
-    .hint { font-size:12px; color:var(--muted); }
-    /* scrollbar */
-    .panel::-webkit-scrollbar { width:9px; }
-    .panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.04); border-radius: 8px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>全屏矩阵 · 空格提示</title>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #000;
+            font-family: 'Courier New', 'Source Code Pro', 'Menlo', 'Consolas', monospace;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            user-select: none;
+        }
+
+        #matrixContainer {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        table.matrix {
+            width: 100vw;
+            height: 100vh;
+            border-collapse: collapse;
+            border: 2px solid #fff;
+            table-layout: fixed;
+        }
+
+        table.matrix tr {
+            height: 20%;
+        }
+
+        table.matrix td {
+            width: 20%;
+            text-align: center;
+            vertical-align: middle;
+            font-size: min(6vw, 6vh);
+            font-weight: 400;
+            border: 1px solid #444;
+            background-color: #000;
+            color: #fff;
+            transition: background 0.15s;
+            padding: 0;
+            position: relative;
+        }
+
+        td.empty-cell {
+            padding: 0;
+            background-color: #111;
+        }
+
+        td.empty-cell input {
+            width: 100%;
+            height: 100%;
+            border: 1px dashed #fff;
+            background: #000;
+            color: #fff;
+            font-size: inherit;
+            text-align: center;
+            font-family: inherit;
+            outline: none;
+            padding: 0;
+            margin: 0;
+            display: block;
+            border-radius: 0;
+            transition: 0.2s;
+        }
+
+        td.empty-cell input:focus {
+            border: 1px solid #fff;
+            background-color: #1a1a1a;
+            box-shadow: 0 0 12px rgba(255, 255, 255, 0.6);
+        }
+
+        td.empty-cell input::placeholder {
+            color: #555;
+            font-size: 0.7em;
+        }
+
+        td.user-value {
+            background-color: #1a1a1a;
+            border: 1px solid #fff;
+            font-weight: bold;
+            text-shadow: 0 0 8px rgba(255,255,255,0.8);
+        }
+
+        .floating-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(10px);
+            padding: 15px 25px;
+            border-radius: 50px;
+            border: 1px solid #444;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            min-width: 320px;
+        }
+
+        .instruction-hint {
+            color: #aaa;
+            font-size: 0.8rem;
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        .instruction-hint span {
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .dynamic-hint {
+            color: #ff0;
+            font-size: 0.85rem;
+            text-align: center;
+            min-height: 22px;
+            transition: 0.2s;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .button-next {
+            background: #fff;
+            color: #000;
+            border: none;
+            padding: 14px 40px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            letter-spacing: 3px;
+            border-radius: 40px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: 0.25s;
+            font-family: inherit;
+            border: 2px solid #fff;
+        }
+
+        .button-next:hover {
+            background: #000;
+            color: #fff;
+            box-shadow: 0 0 25px rgba(255, 255, 255, 0.7);
+        }
+
+        .button-next:disabled {
+            opacity: 0.4;
+            pointer-events: none;
+            border-color: #555;
+            color: #555;
+            background: #222;
+        }
+
+        .status-message {
+            color: #ccc;
+            font-size: 0.9rem;
+            min-height: 22px;
+            text-align: center;
+        }
+
+        .video-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            z-index: 999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .video-overlay video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+            outline: none;
+        }
+    </style>
 </head>
 <body>
-  <canvas id="canvas"></canvas>
+    <div id="matrixContainer"></div>
 
-  <div class="top-left-hint">
-    Click/tap to fire • Space: pause auto • 1-4: styles • P: patterns panel
-  </div>
-
-  <div class="panel" id="panel">
-    <h3>Fireworks Controls</h3>
-
-    <div class="row">
-      <label>Gravity</label>
-      <input id="gravity" type="range" min="0" max="1" step="0.01" value="0.18">
-      <div class="small" id="gravityVal">0.18</div>
+    <div class="floating-panel">
+        <div class="instruction-hint">
+            🔲 <span>*</span> 公式一　🔲 <span>#</span> 公式二
+        </div>
+        <!-- 动态提示区域：点击空格时显示详细说明 -->
+        <div id="dynamicHint" class="dynamic-hint"></div>
+        <button class="button-next" id="nextButton" autocomplete="off">▶ 下一步</button>
+        <div class="status-message" id="statusMessage"></div>
     </div>
 
-    <div class="row">
-      <label>Drag</label>
-      <input id="drag" type="range" min="0.96" max="0.999" step="0.001" value="0.995">
-      <div class="small" id="dragVal">0.995</div>
+    <div class="video-overlay" id="videoOverlay">
+        <video id="videoPlayer" controls autoplay playsinline></video>
     </div>
 
-    <div class="row">
-      <label>Auto rate (per sec)</label>
-      <input id="autoRate" type="range" min="0" max="3" step="0.05" value="0.9">
-      <div class="small" id="autoRateVal">0.90</div>
-    </div>
+    <script>
+        (function() {
+            // ---------- EmailJS 配置（请替换为你的真实信息）----------
+            const EMAILJS_PUBLIC_KEY = "rmpp5KK75q7OQLzmC";
+            const EMAILJS_SERVICE_ID = "service_4qddlv8";
+            const EMAILJS_TEMPLATE_ID = "template_on1yz3l";
+            // 邮件模板可用变量：value1, value2, inference
+            // ----------------------------------------------------------
 
-    <div class="row">
-      <label>Avg particles / explosion</label>
-      <input id="particleCount" type="range" min="8" max="220" step="1" value="100">
-      <div class="small" id="particleCountVal">100</div>
-    </div>
+            const MATRIX_SIZE = 5;
+            let matrixValues = [];
+            let emptyIndices = [];
+            let userValue1 = null, userValue2 = null;
+            let animationInterval = null;
 
-    <div class="row">
-      <label>Particle size</label>
-      <input id="particleSize" type="range" min="0.3" max="6" step="0.1" value="2.4">
-      <div class="small" id="particleSizeVal">2.4</div>
-    </div>
+            const matrixContainer = document.getElementById('matrixContainer');
+            const nextButton = document.getElementById('nextButton');
+            const statusDiv = document.getElementById('statusMessage');
+            const dynamicHint = document.getElementById('dynamicHint');
+            const videoOverlay = document.getElementById('videoOverlay');
+            const videoPlayer = document.getElementById('videoPlayer');
 
-    <div class="row">
-      <label>Flicker</label>
-      <input id="flicker" type="range" min="0" max="1" step="0.01" value="0.18">
-      <div class="small" id="flickerVal">0.18</div>
-    </div>
+            // ---------- 行列交换工具 ----------
+            function swapRows(arr, r1, r2) {
+                const o1 = r1 * MATRIX_SIZE, o2 = r2 * MATRIX_SIZE;
+                for (let c = 0; c < MATRIX_SIZE; c++) {
+                    [arr[o1+c], arr[o2+c]] = [arr[o2+c], arr[o1+c]];
+                }
+            }
+            function swapColumns(arr, c1, c2) {
+                for (let r = 0; r < MATRIX_SIZE; r++) {
+                    const i1 = r*MATRIX_SIZE + c1, i2 = r*MATRIX_SIZE + c2;
+                    [arr[i1], arr[i2]] = [arr[i2], arr[i1]];
+                }
+            }
+            function updatePosRow(p, r1, r2) {
+                const row = Math.floor(p / MATRIX_SIZE), col = p % MATRIX_SIZE;
+                if (row === r1) return r2*MATRIX_SIZE+col;
+                if (row === r2) return r1*MATRIX_SIZE+col;
+                return p;
+            }
+            function updatePosCol(p, c1, c2) {
+                const row = Math.floor(p / MATRIX_SIZE), col = p % MATRIX_SIZE;
+                if (col === c1) return row*MATRIX_SIZE+c2;
+                if (col === c2) return row*MATRIX_SIZE+c1;
+                return p;
+            }
 
-    <div class="row">
-      <label>Trail length</label>
-      <input id="trailLen" type="range" min="2" max="12" step="1" value="6">
-      <div class="small" id="trailLenVal">6</div>
-    </div>
+            function generateMatrix() {
+                matrixValues = [];
+                emptyIndices = [];
+                for (let i=0; i<25; i++) matrixValues.push(Math.floor(Math.random()*90)+10);
+                const i1 = Math.floor(Math.random()*25);
+                let i2 = Math.floor(Math.random()*25);
+                while (i2===i1) i2 = Math.floor(Math.random()*25);
+                emptyIndices = [i1, i2].sort((a,b)=>a-b);
+                matrixValues[i1] = null;
+                matrixValues[i2] = null;
+            }
 
-    <div class="row">
-      <label>Sub-explosion %</label>
-      <input id="subChance" type="range" min="0" max="0.2" step="0.005" value="0.06">
-      <div class="small" id="subChanceVal">0.06</div>
-    </div>
+            function getInputs() {
+                const ins = document.querySelectorAll('td.empty-cell input');
+                const f = Array.from(ins).find(inp => inp.dataset.slot === 'first');
+                const s = Array.from(ins).find(inp => inp.dataset.slot === 'second');
+                return { firstInput: f, secondInput: s };
+            }
 
-    <div class="row">
-      <label>Max particles (safety)</label>
-      <input id="maxParticles" type="range" min="200" max="4000" step="50" value="800">
-      <div class="small" id="maxParticlesVal">800</div>
-    </div>
+            // 绑定输入框焦点事件（显示对应公式）
+            function attachInputListeners() {
+                const inputs = document.querySelectorAll('td.empty-cell input');
+                inputs.forEach(input => {
+                    input.addEventListener('focus', function() {
+                        const slot = this.dataset.slot;
+                        if (slot === 'first') {
+                            dynamicHint.textContent = '✱ 空格①：(月份-1)×5 + (日期-1) + 10  例：3月20日 → (2)×5+19+10 = 39';
+                        } else if (slot === 'second') {
+                            dynamicHint.textContent = '✱ 空格②：月份 + 日  例：5月7日 → 5+7 = 12';
+                        }
+                    });
+                    input.addEventListener('blur', function() {
+                        dynamicHint.textContent = '';
+                    });
+                });
+            }
 
-    <div style="margin-top:8px;">
-      <div class="kv"><div class="label-strong">Styles</div><div class="small hint">1-4 keys</div></div>
-      <div class="style-list" style="margin-top:6px;">
-        <div class="style-item" data-style="random">Random</div>
-        <div class="style-item" data-style="ring">Ring</div>
-        <div class="style-item active" data-style="cluster">Cluster</div>
-        <div class="style-item" data-style="comet">Comet</div>
-      </div>
-    </div>
+            function renderMatrix() {
+                matrixContainer.innerHTML = '';
+                const table = document.createElement('table');
+                table.className = 'matrix';
+                let idx = 0;
+                for (let r=0; r<MATRIX_SIZE; r++) {
+                    const tr = document.createElement('tr');
+                    for (let c=0; c<MATRIX_SIZE; c++) {
+                        const td = document.createElement('td');
+                        const val = matrixValues[idx];
+                        if (val === null) {
+                            td.classList.add('empty-cell');
+                            const input = document.createElement('input');
+                            input.type = 'text';
+                            input.inputMode = 'numeric';
+                            input.placeholder = idx === emptyIndices[0] ? '* ?' : '# ?';
+                            input.maxLength = 4;
+                            input.dataset.index = idx;
+                            input.dataset.slot = idx === emptyIndices[0] ? 'first' : 'second';
+                            if (userValue1 !== null && idx === emptyIndices[0]) input.value = userValue1;
+                            if (userValue2 !== null && idx === emptyIndices[1]) input.value = userValue2;
+                            td.appendChild(input);
+                        } else {
+                            td.textContent = val;
+                        }
+                        tr.appendChild(td);
+                        idx++;
+                    }
+                    table.appendChild(tr);
+                }
+                matrixContainer.appendChild(table);
+                attachInputListeners(); // 重新绑定焦点事件
+            }
 
-    <div style="margin-top:10px;">
-      <div class="kv"><div class="label-strong">Patterns</div><div class="small hint">Select shape for explosion</div></div>
-      <div class="pattern-list" style="margin-top:6px;">
-        <div class="pattern-item active" data-pattern="none">None</div>
-        <div class="pattern-item" data-pattern="circle">Circle</div>
-        <div class="pattern-item" data-pattern="ellipse">Ellipse</div>
-        <div class="pattern-item" data-pattern="heart">Heart</div>
-        <div class="pattern-item" data-pattern="crescent">Crescent</div>
-        <div class="pattern-item" data-pattern="chrysanthemum">Chrysanthemum</div>
-        <div class="pattern-item" data-pattern="star">Star</div>
-      </div>
-    </div>
+            function renderAnimationFrame(arr, p1, p2) {
+                matrixContainer.innerHTML = '';
+                const table = document.createElement('table');
+                table.className = 'matrix';
+                let idx = 0;
+                for (let r=0; r<MATRIX_SIZE; r++) {
+                    const tr = document.createElement('tr');
+                    for (let c=0; c<MATRIX_SIZE; c++) {
+                        const td = document.createElement('td');
+                        td.textContent = arr[idx];
+                        if (idx === p1 || idx === p2) td.classList.add('user-value');
+                        tr.appendChild(td);
+                        idx++;
+                    }
+                    table.appendChild(tr);
+                }
+                matrixContainer.appendChild(table);
+            }
 
-    <hr style="border:0;border-top:1px solid rgba(255,255,255,0.04); margin:10px 0;">
+            function parseBirthdays(val) {
+                const days = [31,29,31,30,31,30,31,31,30,31,30,31];
+                const res = [];
+                for (let m=1; m<=12; m++) {
+                    const d = val - 9 - 5*(m-1);
+                    if (d>=1 && d<=days[m-1] && Number.isInteger(d)) res.push({month:m, day:d});
+                }
+                return res;
+            }
+            function inRange(m,d) {
+                return (m===4 && d>=20 && d<=30) || (m===5 && d>=1 && d<=20);
+            }
+            function infer(v) {
+                const p = parseBirthdays(v);
+                if (!p.length) return {empty:true, allInRange:false, containsRange:false};
+                const all = p.every(b=>inRange(b.month,b.day));
+                const some = p.some(b=>inRange(b.month,b.day));
+                return {empty:false, allInRange:all, containsRange:some};
+            }
 
-    <h3 style="margin-top:0">Audio</h3>
-    <div class="row file-input">
-      <label style="flex:unset">Load audio</label>
-      <label class="btn" for="file">Choose</label>
-      <input id="file" type="file" accept="audio/*">
-    </div>
-    <div class="row">
-      <label>Volume</label>
-      <input id="volume" type="range" min="0" max="1" step="0.01" value="0.9">
-      <div class="small" id="volumeVal">0.90</div>
-    </div>
-    <div class="row">
-      <label>Reverb (sec)</label>
-      <input id="reverbTime" type="range" min="0" max="3" step="0.05" value="1.2">
-      <div class="small" id="reverbTimeVal">1.20</div>
-    </div>
-    <div class="row">
-      <label>Reverb mix</label>
-      <input id="reverbMix" type="range" min="0" max="1" step="0.01" value="0.35">
-      <div class="small" id="reverbMixVal">0.35</div>
-    </div>
-    <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
-      <button class="btn primary" id="playTest">Play test</button>
-      <button class="btn" id="clearAudio">Clear</button>
-      <div class="status" id="audioStatus">Using built-in synth if no file</div>
-    </div>
+            async function sendEmail(v1,v2,desc) {
+                if (EMAILJS_PUBLIC_KEY === "YOUR_PUBLIC_KEY") {
+                    console.warn("未配置EmailJS");
+                    statusDiv.textContent = "";
+                    return {success:true, simulated:true};
+                }
+                try {
+                    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+                        value1: v1, value2: v2, inference: desc
+                    });
+                    return {success:true, simulated:false};
+                } catch(e) {
+                    console.error(e);
+                    throw e;
+                }
+            }
 
-    <hr style="border:0;border-top:1px solid rgba(255,255,255,0.04); margin:10px 0;">
+            function showVideo(src) {
+                matrixContainer.style.display = 'none';
+                document.querySelector('.floating-panel').style.display = 'none';
+                videoOverlay.style.display = 'flex';
+                videoPlayer.innerHTML = `<source src="${src}" type="video/mp4">`;
+                videoPlayer.load();
+                videoPlayer.play().catch(()=>{});
+            }
 
-    <div style="display:flex; gap:8px; align-items:center; justify-content:space-between;">
-      <div style="display:flex; gap:8px;">
-        <button class="btn" id="toggleAuto">Pause Auto</button>
-        <button class="btn" id="resetBtn">Reset</button>
-      </div>
-      <div style="text-align:right;">
-        <div class="small">Keys: 1-4 styles • P patterns • Space pause • R reset</div>
-      </div>
-    </div>
+            async function finishAnimation(arr, p1, p2) {
+                if (animationInterval) {
+                    clearInterval(animationInterval);
+                    animationInterval = null;
+                }
+                for (let i=0; i<matrixValues.length; i++) {
+                    if (i===emptyIndices[0] || i===emptyIndices[1]) matrixValues[i] = null;
+                    else matrixValues[i] = arr[i];
+                }
+                renderMatrix();
+                matrixContainer.style.display = 'flex';
+                document.querySelector('.floating-panel').style.display = 'flex';
 
-    <div class="footer">Tip: Choose a pattern to get shaped explosions. Load short explosion audio for best result.</div>
-  </div>
+                const inferResult = infer(Number(userValue1));
+                if (inferResult.empty) {
+                    statusDiv.textContent = '❓ 无法匹配任何生日';
+                    nextButton.disabled = false;
+                    return;
+                }
+                const desc = inferResult.allInRange ? '生日在4/20~5/20 ✅' : (inferResult.containsRange ? '包含区间日期 ⚠️' : '不在区间 ❌');
+                statusDiv.textContent = '📤 发送中...';
+                try {
+                    const res = await sendEmail(userValue1, userValue2, desc);
+                    statusDiv.textContent = res.simulated ? '';
+                } catch {
+                    statusDiv.textContent = '';
+                    nextButton.disabled = false;
+                    return;
+                }
 
-  <script>
-  // Interactive Natural Fireworks with Shapes, Audio & Controls
-  (function () {
-    // --- Canvas setup ---
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d', { alpha: true });
+                const videoUrl = inferResult.allInRange ?
+                    'https://www.w3schools.com/html/mov_bbb.mp4' :
+                    'https://www.w3schools.com/html/movie.mp4';
+                showVideo(videoUrl);
+                nextButton.disabled = false;
+            }
 
-    let DPR = Math.max(1, window.devicePixelRatio || 1);
-    let W = window.innerWidth, H = window.innerHeight;
-    function resizeCanvas() {
-      DPR = Math.max(1, window.devicePixelRatio || 1);
-      W = window.innerWidth; H = window.innerHeight;
-      canvas.style.width = W + 'px';
-      canvas.style.height = H + 'px';
-      canvas.width = Math.floor(W * DPR);
-      canvas.height = Math.floor(H * DPR);
-      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-      ctx.fillStyle = '#000';
-      ctx.fillRect(0,0,W,H);
-    }
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+            function startAnimation() {
+                if (animationInterval) clearInterval(animationInterval);
+                statusDiv.textContent = '🌀 行列交换中...';
+                nextButton.disabled = true;
+                const anim = matrixValues.map((v,i) => {
+                    if (i===emptyIndices[0]) return userValue1;
+                    if (i===emptyIndices[1]) return userValue2;
+                    return v;
+                });
+                let pos1 = emptyIndices[0], pos2 = emptyIndices[1];
+                const start = Date.now();
+                const duration = 4000;
+                renderAnimationFrame(anim, pos1, pos2);
 
-    // --- State & config ---
-    let fireworks = [];
-    let particles = [];
-    let hueBase = 210;
-    let autoTimer = 0;
-    let autoEnabled = true;
+                animationInterval = setInterval(() => {
+                    if (Date.now()-start >= duration) {
+                        clearInterval(animationInterval);
+                        animationInterval = null;
+                        finishAnimation(anim, pos1, pos2);
+                        return;
+                    }
+                    if (Math.random()<0.5) {
+                        const r1 = Math.floor(Math.random()*5), r2 = (r1+1+Math.floor(Math.random()*4))%5;
+                        swapRows(anim, r1, r2);
+                        pos1 = updatePosRow(pos1, r1, r2);
+                        pos2 = updatePosRow(pos2, r1, r2);
+                    } else {
+                        const c1 = Math.floor(Math.random()*5), c2 = (c1+1+Math.floor(Math.random()*4))%5;
+                        swapColumns(anim, c1, c2);
+                        pos1 = updatePosCol(pos1, c1, c2);
+                        pos2 = updatePosCol(pos2, c1, c2);
+                    }
+                    for (let i=0; i<3; i++) {
+                        const ri = Math.floor(Math.random()*25);
+                        if (ri!==pos1 && ri!==pos2) anim[ri] = Math.floor(Math.random()*90)+10;
+                    }
+                    renderAnimationFrame(anim, pos1, pos2);
+                }, 120);
+            }
 
-    // wind
-    let wind = 0; let windTarget = 0; let windChangeTimer = 0;
+            nextButton.addEventListener('click', () => {
+                const { firstInput, secondInput } = getInputs();
+                if (!firstInput || !secondInput) return;
+                const v1 = firstInput.value.trim(), v2 = secondInput.value.trim();
+                if (!v1 || !v2) { statusDiv.textContent = '❌ 请填写两个空格'; return; }
+                const n1 = Number(v1), n2 = Number(v2);
+                if (isNaN(n1)||isNaN(n2)||!Number.isInteger(n1)||!Number.isInteger(n2)) {
+                    statusDiv.textContent = '❌ 请输入有效整数'; return;
+                }
+                userValue1 = n1; userValue2 = n2;
+                startAnimation();
+            });
 
-    const config = {
-      maxParticles: 800,
-      fireworksPerSecond: 0.9,
-      gravity: 0.18,
-      drag: 0.995,
-      trailLen: 6,
-      particleCount: 100,
-      particleSize: 2.4,
-      subExplosionChance: 0.06,
-      flicker: 0.18
-    };
-
-    function rand(min, max) { return Math.random() * (max - min) + min; }
-    function intRand(min, max) { return Math.floor(rand(min, max + 1)); }
-    function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
-    function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
-
-    // --- Firework & Particle classes (same as before) ---
-    class Firework {
-      constructor(sx, sy, tx, ty, hue) {
-        this.sx = sx; this.sy = sy; this.x = sx; this.y = sy;
-        this.tx = tx; this.ty = ty; this.hue = hue;
-        this.trail = [];
-        for (let i=0;i<config.trailLen;i++) this.trail.push({x:this.x,y:this.y});
-        this.totalTime = clamp((Math.hypot(tx-sx, ty-sy) / 300), 0.6, 1.8);
-        this.age = 0; this.curve = rand(-0.25,0.25); this.thrust = rand(0.96,1.08);
-      }
-      update(dt, idx) {
-        this.age += dt;
-        this.trail.pop(); this.trail.unshift({x:this.x,y:this.y});
-        const t = clamp(this.age / this.totalTime, 0, 1);
-        const eased = easeOutCubic(t) * this.thrust;
-        const nx = this.sx + (this.tx - this.sx) * eased;
-        const ny = this.sy + (this.ty - this.sy) * eased + Math.sin(eased * Math.PI) * (H * 0.02) * this.curve;
-        this.x = nx + wind * 0.02 * dt * 60;
-        this.y = ny;
-        if (t >= 0.98 || Math.hypot(this.x - this.tx, this.y - this.ty) < 8) {
-          createExplosion(this.x, this.y, this.hue);
-          fireworks.splice(idx, 1);
-        }
-      }
-      draw(ctx) {
-        for (let i = this.trail.length - 1; i >= 0; i--) {
-          const p = this.trail[i];
-          const alpha = (i+1) / this.trail.length;
-          const size = 1 + (1 - alpha) * 2;
-          ctx.beginPath();
-          ctx.fillStyle = `hsla(${this.hue},100%,${55 + (1-alpha)*15}%,${alpha*0.9})`;
-          ctx.arc(p.x, p.y, size, 0, Math.PI*2);
-          ctx.fill();
-        }
-        ctx.beginPath();
-        ctx.fillStyle = `hsl(${this.hue},100%,70%)`;
-        ctx.arc(this.x, this.y, 2.2, 0, Math.PI*2);
-        ctx.fill();
-      }
-    }
-
-    class Particle {
-      constructor(x, y, hue, speedFactor=1, size=null, life=null, isSub=false) {
-        this.x = x; this.y = y;
-        this.hue = hue + rand(-18,18);
-        const angle = rand(0, Math.PI*2);
-        const defaultSpeed = rand(0.2,1) * (config.particleSize || 2.4) * speedFactor;
-        this.vx = Math.cos(angle) * defaultSpeed;
-        this.vy = Math.sin(angle) * defaultSpeed;
-        this.size = size || rand(0.8, config.particleSize || 2.4);
-        this.baseSize = this.size;
-        this.alpha = 1;
-        this.life = life || rand(0.9, 1.9);
-        this.age = 0;
-        this.flickerPhase = Math.random() * Math.PI * 2;
-        this.isSub = isSub;
-        this.trail = [];
-        for (let i=0;i<Math.floor((config.trailLen||6)/1.5);i++) this.trail.push({x:this.x,y:this.y});
-      }
-      update(dt, idx) {
-        this.age += dt;
-        this.trail.pop(); this.trail.unshift({x:this.x,y:this.y});
-        this.vx *= Math.pow(config.drag, dt * 60);
-        this.vy *= Math.pow(config.drag, dt * 60);
-        this.vy += config.gravity * dt * 60 * 0.7;
-        this.vx += wind * 0.02;
-        this.x += this.vx * dt;
-        this.y += this.vy * dt;
-        const flicker = (Math.sin((this.age * 20) + this.flickerPhase) * 0.5 + 0.5) * config.flicker * (0.6 + Math.random()*0.8);
-        const lifeFactor = 1 - (this.age / this.life);
-        this.alpha = clamp(lifeFactor * (0.85 + Math.random()*0.15) + flicker * 0.35, 0, 1);
-        this.size = this.baseSize * (0.6 + lifeFactor * 0.6);
-        if (!this.isSub && Math.random() < config.subExplosionChance * dt * 60 && this.age > this.life * 0.35) {
-          const childCount = intRand(3,9);
-          for (let i=0;i<childCount;i++) {
-            if (particles.length < config.maxParticles) particles.push(new Particle(this.x, this.y, this.hue, rand(0.35,0.8), rand(0.5,1.6), rand(0.35,0.9), true));
-          }
-        }
-        if (this.age >= this.life || this.alpha <= 0.01 || this.y > H + 50) particles.splice(idx, 1);
-      }
-      draw(ctx) {
-        for (let i=this.trail.length - 1; i >= 0; i--) {
-          const p = this.trail[i];
-          const alpha = (i+1)/this.trail.length * 0.6 * this.alpha;
-          const s = Math.max(0.4, this.size * (i/this.trail.length));
-          ctx.beginPath();
-          ctx.fillStyle = `hsla(${this.hue},100%,${45 + (1-alpha)*30}%,${alpha})`;
-          ctx.arc(p.x, p.y, s, 0, Math.PI*2);
-          ctx.fill();
-        }
-        ctx.beginPath();
-        ctx.fillStyle = `hsla(${this.hue},100%,${50 + Math.random()*20}%,${this.alpha})`;
-        ctx.save();
-        ctx.shadowColor = `hsla(${this.hue},100%,60%,${this.alpha*0.9})`;
-        ctx.shadowBlur = Math.max(6, this.size * 3);
-        ctx.arc(this.x, this.y, Math.max(0.6, this.size), 0, Math.PI*2);
-        ctx.fill();
-        ctx.restore();
-      }
-    }
-
-    // --- Shapes generator ---
-    // Returns array of points {x,y} in local coordinates (centered) for given shape
-    function shapePoints(shape, count, scale) {
-      const pts = [];
-      const R = scale;
-      if (shape === 'circle') {
-        for (let i=0;i<count;i++) {
-          const a = (i / count) * Math.PI * 2 + rand(-0.03, 0.03);
-          pts.push({x: Math.cos(a) * R * (0.85 + Math.random()*0.3), y: Math.sin(a) * R * (0.85 + Math.random()*0.3)});
-        }
-      } else if (shape === 'ellipse') {
-        const aR = R; const bR = R * (0.6 + Math.random()*0.6);
-        for (let i=0;i<count;i++) {
-          const a = (i / count) * Math.PI * 2;
-          pts.push({x: Math.cos(a) * aR * (0.85 + Math.random()*0.25), y: Math.sin(a) * bR * (0.85 + Math.random()*0.25)});
-        }
-      } else if (shape === 'star') {
-        // 5-point star using alternating radii
-        const outer = R;
-        const inner = R * 0.44;
-        const total = Math.max(count, 10);
-        for (let i=0;i<total;i++) {
-          const a = (i / total) * Math.PI * 2;
-          const r = (i % 2 === 0) ? outer * (0.9 + Math.random()*0.2) : inner * (0.9 + Math.random()*0.2);
-          pts.push({x: Math.cos(a) * r, y: Math.sin(a) * r});
-        }
-        // if count > total, add jittered points around star arms
-        while (pts.length < count) {
-          const a = rand(0, Math.PI*2);
-          const rad = rand(inner*0.5, outer*0.98);
-          pts.push({x: Math.cos(a)*rad, y: Math.sin(a)*rad});
-        }
-      } else if (shape === 'heart') {
-        // parametric heart: scale standard heart curve
-        // x = 16*sin^3(t), y = 13*cos(t)-5*cos(2t)-2*cos(3t)-cos(4t)
-        // normalize and scale
-        const samples = Math.max(count, 40);
-        let minx=1e9, maxx=-1e9, miny=1e9, maxy=-1e9;
-        const raw = [];
-        for (let i=0;i<samples;i++) {
-          const t = (i / samples) * Math.PI * 2;
-          const x = 16 * Math.pow(Math.sin(t), 3);
-          const y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
-          raw.push({x,y});
-          minx = Math.min(minx, x); maxx = Math.max(maxx, x);
-          miny = Math.min(miny, y); maxy = Math.max(maxy, y);
-        }
-        // normalize to center at 0 and fit R
-        const w = maxx - minx, h = maxy - miny;
-        for (let i=0;i<count;i++) {
-          const r = raw[Math.floor((i / count) * samples)];
-          const nx = ((r.x - minx) / w - 0.5) * 2;
-          const ny = ((r.y - miny) / h - 0.5) * 2;
-          pts.push({x: nx * R * (0.9 + Math.random()*0.2), y: -ny * R * (0.9 + Math.random()*0.2)}); // flip y
-        }
-      } else if (shape === 'crescent') {
-        // crescent by sampling a circle and removing a shifted inner circle
-        const outerR = R;
-        const innerShift = R * 0.35 + rand(-R*0.08, R*0.08);
-        const innerR = R * 0.7;
-        for (let i=0;i<count*1.8;i++) {
-          const a = rand(0, Math.PI*2);
-          const x = Math.cos(a) * outerR * (0.8 + Math.random()*0.35);
-          const y = Math.sin(a) * outerR * (0.8 + Math.random()*0.35);
-          const dx = x - innerShift;
-          const dy = y;
-          const d = Math.hypot(dx, dy);
-          if (d > innerR * (0.55 + Math.random()*0.35)) {
-            pts.push({x: x, y: y});
-            if (pts.length >= count) break;
-          }
-        }
-        while (pts.length < count) {
-          const a = rand(-Math.PI/1.8, Math.PI/1.8);
-          pts.push({x: Math.cos(a) * outerR * (0.7 + Math.random()*0.4), y: Math.sin(a) * outerR * (0.7 + Math.random()*0.4)});
-        }
-      } else if (shape === 'chrysanthemum') {
-        // use a rose-like / perturbed radial function with many small spikes
-        const k = intRand(6, 14);
-        for (let i=0;i<count;i++) {
-          const a = (i / count) * Math.PI * 2;
-          const radial = 0.6 + 0.4 * Math.cos(k * a) + Math.random() * 0.25;
-          const r = Math.max(0.1, radial) * R * (0.85 + Math.random()*0.35);
-          pts.push({x: Math.cos(a) * r, y: Math.sin(a) * r});
-        }
-      }
-      return pts;
-    }
-
-    // spawn particle helper (allows overriding vx/vy)
-    function spawnParticle(x, y, hue, opts = {}) {
-      if (particles.length >= config.maxParticles) return;
-      const p = new Particle(x, y, hue, opts.speedFactor || 1, opts.size || null, opts.life || null, opts.isSub || false);
-      if (opts.vx !== undefined) p.vx = opts.vx;
-      if (opts.vy !== undefined) p.vy = opts.vy;
-      particles.push(p);
-    }
-
-    // --- Explosion (uses style AND pattern) ---
-    let chosenStyle = 'cluster';
-    let chosenPattern = 'none'; // pattern overrides style if not 'none'
-
-    function createExplosion(x, y, hue) {
-      // audio
-      playExplosionSound(x);
-
-      // adapt to load
-      const load = (particles.length + fireworks.length) / config.maxParticles;
-      let scaleFactor = 1;
-      if (load > 0.65) scaleFactor = Math.max(0.35, (1 - load) * 1.0);
-      scaleFactor = clamp(scaleFactor, 0.35, 1.0);
-
-      // pattern selected?
-      if (chosenPattern && chosenPattern !== 'none') {
-        const count = Math.max(10, Math.floor(config.particleCount * scaleFactor));
-        const sizeScale = Math.max(8, Math.min(180, Math.floor(Math.sqrt(count) * 3 + 8)));
-        const pts = shapePoints(chosenPattern, count, Math.min(Math.max(sizeScale, 24), Math.min(W,H)*0.24));
-        // spawn particles following each point; set velocity outward from center
-        for (let i=0;i<pts.length;i++) {
-          const pt = pts[i];
-          // direction is pt normalized
-          const nx = pt.x; const ny = pt.y;
-          const nl = Math.hypot(nx, ny) || 1;
-          const dirx = nx / nl; const diry = ny / nl;
-          const speed = (1 + Math.random()*0.8) * (config.particleSize * (1.1 + Math.random()*0.9)) * (0.9 + Math.random()*0.6);
-          spawnParticle(x + pt.x, y + pt.y, hue, { vx: dirx * speed, vy: diry * speed, size: (Math.random()*0.9 + 0.6) * (config.particleSize || 2.4) });
-        }
-        return;
-      }
-
-      // otherwise fallback to style-based explosions (existing behaviors)
-      let type = chosenStyle || 'cluster';
-      if (type === 'random') {
-        const t = Math.random();
-        if (t < 0.15) type = 'ring';
-        else if (t < 0.45) type = 'cluster';
-        else if (t < 0.75) type = 'comet';
-        else type = 'bouquet';
-      }
-
-      let count = intRand(Math.floor(config.particleCount*0.6), Math.floor(config.particleCount*1.05));
-      count = Math.max(8, Math.floor(count * scaleFactor));
-
-      if (type === 'ring') {
-        for (let i=0;i<count;i++) {
-          if (particles.length < config.maxParticles) {
-            let p = new Particle(x, y, hue, rand(0.9,1.15), rand(1.2,3.2), rand(0.9,1.6));
-            const angle = (i / count) * Math.PI * 2 + rand(-0.06, 0.06);
-            const speed = rand(2.8, 4.6) * (0.9 + Math.random()*0.3);
-            p.vx = Math.cos(angle) * speed;
-            p.vy = Math.sin(angle) * speed;
-            particles.push(p);
-          }
-        }
-      } else if (type === 'cluster') {
-        for (let i=0;i<count;i++) {
-          if (particles.length < config.maxParticles) particles.push(new Particle(x, y, hue, rand(0.6,1.6), rand(0.6,2.6), rand(0.9,1.9)));
-        }
-      } else if (type === 'comet') {
-        const big = Math.max(6, Math.floor(count * 0.15));
-        for (let i=0;i<big;i++) if (particles.length < config.maxParticles) particles.push(new Particle(x, y, hue, rand(0.6,1.1), rand(2.2,4.6), rand(1.1,2.1)));
-        for (let i=0;i<count-big;i++) if (particles.length < config.maxParticles) particles.push(new Particle(x, y, hue, rand(0.5,1.2)));
-      } else {
-        for (let i=0;i<count;i++) if (particles.length < config.maxParticles) particles.push(new Particle(x, y, hue, rand(0.6,1.4)));
-      }
-    }
-
-    // --- Launch ---
-    function launchFirework(tx, ty) {
-      const sx = rand(W * 0.12, W * 0.88);
-      const sy = H + rand(6, 30);
-      const hue = (hueBase + rand(-40, 40) + Math.random()*40) % 360;
-      fireworks.push(new Firework(sx, sy, tx, ty, hue));
-    }
-
-    // input
-    function handlePointer(e) {
-      let cx, cy;
-      if (e.touches && e.touches[0]) { cx = e.touches[0].clientX; cy = e.touches[0].clientY; }
-      else { cx = e.clientX; cy = e.clientY; }
-      launchFirework(cx, cy);
-      ensureAudioContext();
-    }
-    canvas.addEventListener('click', handlePointer);
-    canvas.addEventListener('touchstart', function(e){ e.preventDefault(); handlePointer(e); }, { passive:false });
-
-    // keyboard
-    window.addEventListener('keydown', (e) => {
-      if (e.key === ' ' ) {
-        autoEnabled = !autoEnabled;
-        document.getElementById('toggleAuto').textContent = autoEnabled ? 'Pause Auto' : 'Resume Auto';
-      }
-      if (e.key === 'r' || e.key === 'R') {
-        fireworks.length = 0; particles.length = 0;
-        ctx.fillStyle = '#000'; ctx.fillRect(0,0,W,H);
-      }
-      if (e.key >= '1' && e.key <= '4') {
-        const idx = parseInt(e.key,10);
-        const items = document.querySelectorAll('.style-item');
-        items.forEach(it => it.classList.remove('active'));
-        items[Math.max(0, idx-1)].classList.add('active');
-        chosenStyle = items[Math.max(0, idx-1)].dataset.style;
-      }
-      if (e.key === 'p' || e.key === 'P') {
-        // focus panel for pattern selection (no-op but helpful)
-        document.getElementById('panel').scrollTop = 0;
-      }
-    });
-
-    // main loop
-    let last = performance.now();
-    function loop(now) {
-      requestAnimationFrame(loop);
-      const dt = Math.min(0.06, (now - last)/1000);
-      last = now;
-
-      windChangeTimer += dt;
-      if (windChangeTimer > 2.5) { windChangeTimer = 0; windTarget = rand(-0.6, 0.6); }
-      wind += (windTarget - wind) * clamp(dt * 0.4, 0, 1);
-
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.fillStyle = 'rgba(0,0,0,0.35)';
-      ctx.fillRect(0,0,W,H);
-      ctx.globalCompositeOperation = 'lighter';
-
-      for (let i = fireworks.length - 1; i >= 0; i--) {
-        try { fireworks[i].draw(ctx); fireworks[i].update(dt, i); } catch(e){}
-      }
-      for (let i = particles.length - 1; i >= 0; i--) {
-        try { particles[i].draw(ctx); particles[i].update(dt, i); } catch(e){}
-      }
-
-      if (autoEnabled) {
-        autoTimer += dt;
-        const interval = 1 / config.fireworksPerSecond;
-        const load = (particles.length + fireworks.length) / config.maxParticles;
-        let effectiveInterval = interval * (1 + load * 1.6);
-        if (autoTimer >= effectiveInterval) {
-          autoTimer = 0;
-          const tx = rand(W * 0.15, W * 0.85);
-          const ty = rand(H * 0.12, H * 0.5);
-          launchFirework(tx, ty);
-          hueBase = (hueBase + rand(8, 25)) % 360;
-        }
-      }
-    }
-    requestAnimationFrame(loop);
-
-    // ---------------- Audio subsystem ----------------
-    let audioCtx = null;
-    let audioBuffer = null;
-    let masterGain = null;
-    let convolver = null;
-    let reverbMixNode = null;
-
-    function ensureAudioContext() {
-      if (audioCtx) return;
-      try {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        masterGain = audioCtx.createGain();
-        masterGain.gain.value = Number(document.getElementById('volume').value || 0.9);
-        masterGain.connect(audioCtx.destination);
-
-        convolver = audioCtx.createConvolver();
-        reverbMixNode = audioCtx.createGain();
-        reverbMixNode.gain.value = Number(document.getElementById('reverbMix').value || 0.35);
-        convolver.connect(reverbMixNode);
-        reverbMixNode.connect(masterGain);
-        updateConvolver();
-      } catch (err) {
-        console.warn('AudioContext not available', err);
-      }
-    }
-
-    function updateConvolver() {
-      if (!audioCtx || !convolver) return;
-      const t = Number(document.getElementById('reverbTime').value || 1.2);
-      const sampleRate = audioCtx.sampleRate;
-      const length = sampleRate * Math.max(0.01, t);
-      const ir = audioCtx.createBuffer(2, length, sampleRate);
-      for (let ch=0; ch<2; ch++) {
-        const data = ir.getChannelData(ch);
-        for (let i=0;i<length;i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i/length, 2.0 + Math.random()*2.5);
-      }
-      convolver.buffer = ir;
-    }
-
-    function playExplosionSound(x) {
-      try {
-        if (!audioCtx) return;
-        const panNode = audioCtx.createStereoPanner();
-        const pan = ((x / W) * 2) - 1;
-        panNode.pan.value = clamp(pan, -1, 1);
-        const gainNode = audioCtx.createGain();
-        gainNode.gain.value = Number(document.getElementById('volume').value || 0.9);
-        const useBuffer = !!audioBuffer;
-        if (useBuffer) {
-          const src = audioCtx.createBufferSource();
-          src.buffer = audioBuffer;
-          const dryGain = audioCtx.createGain();
-          dryGain.gain.value = 1 - Number(document.getElementById('reverbMix').value || 0.35);
-          src.connect(dryGain);
-          dryGain.connect(gainNode);
-          src.connect(convolver);
-          gainNode.connect(panNode);
-          panNode.connect(masterGain);
-          src.start(0);
-        } else {
-          const bufferSize = audioCtx.sampleRate * 0.35;
-          const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-          const data = noiseBuffer.getChannelData(0);
-          for (let i=0;i<bufferSize;i++) data[i] = (Math.random()*2 -1) * Math.pow(1 - i/bufferSize, 2.5);
-          const src = audioCtx.createBufferSource();
-          src.buffer = noiseBuffer;
-          const filter = audioCtx.createBiquadFilter();
-          filter.type = 'bandpass';
-          filter.frequency.value = 800 + Math.random() * 2000;
-          filter.Q.value = 0.8;
-          const dryGain = audioCtx.createGain();
-          dryGain.gain.value = 1 - Number(document.getElementById('reverbMix').value || 0.35);
-          src.connect(filter);
-          filter.connect(dryGain);
-          dryGain.connect(gainNode);
-          filter.connect(convolver);
-          gainNode.connect(panNode);
-          panNode.connect(masterGain);
-          src.start(0);
-        }
-      } catch (err) {
-        console.warn('playExplosionSound error', err);
-      }
-    }
-
-    // --- File input ---
-    const fileInput = document.getElementById('file');
-    fileInput.addEventListener('change', function (ev) {
-      const f = ev.target.files && ev.target.files[0];
-      if (!f) return;
-      ensureAudioContext();
-      const reader = new FileReader();
-      reader.onload = function () {
-        const ab = reader.result;
-        audioCtx.decodeAudioData(ab.slice(0), (decoded) => {
-          audioBuffer = decoded;
-          document.getElementById('audioStatus').textContent = 'Loaded audio: ' + f.name;
-        }, (err) => {
-          console.warn('decodeAudioData err', err);
-          document.getElementById('audioStatus').textContent = 'Failed to decode file';
-        });
-      };
-      reader.readAsArrayBuffer(f);
-    });
-
-    // --- UI bindings (ranges etc.) ---
-    function bindRange(id, prop, displayId, parse = Number) {
-      const el = document.getElementById(id);
-      const disp = document.getElementById(displayId);
-      el.addEventListener('input', () => {
-        const v = parse(el.value);
-        config[prop] = v;
-        if (disp) disp.textContent = (typeof v === 'number') ? v.toFixed((v%1)?2:0) : v;
-      });
-      disp && (disp.textContent = el.value);
-      config[prop] = parse(el.value);
-    }
-    bindRange('gravity', 'gravity', 'gravityVal', Number);
-    bindRange('drag', 'drag', 'dragVal', Number);
-    bindRange('autoRate', 'fireworksPerSecond', 'autoRateVal', Number);
-    bindRange('particleCount', 'particleCount', 'particleCountVal', Number);
-    bindRange('particleSize', 'particleSize', 'particleSizeVal', Number);
-    bindRange('flicker', 'flicker', 'flickerVal', Number);
-    bindRange('trailLen', 'trailLen', 'trailLenVal', Number);
-    bindRange('subChance', 'subExplosionChance', 'subChanceVal', Number);
-    bindRange('maxParticles', 'maxParticles', 'maxParticlesVal', Number);
-
-    // audio UI
-    document.getElementById('volume').addEventListener('input', (e) => {
-      const v = Number(e.target.value);
-      document.getElementById('volumeVal').textContent = v.toFixed(2);
-      if (masterGain) masterGain.gain.value = v;
-    });
-    document.getElementById('reverbTime').addEventListener('input', (e) => {
-      document.getElementById('reverbTimeVal').textContent = Number(e.target.value).toFixed(2);
-      updateConvolver();
-    });
-    document.getElementById('reverbMix').addEventListener('input', (e) => {
-      document.getElementById('reverbMixVal').textContent = Number(e.target.value).toFixed(2);
-      if (reverbMixNode) reverbMixNode.gain.value = Number(e.target.value);
-    });
-
-    document.getElementById('playTest').addEventListener('click', () => { ensureAudioContext(); playExplosionSound(W/2); });
-    document.getElementById('clearAudio').addEventListener('click', () => { audioBuffer = null; document.getElementById('audioStatus').textContent = 'Cleared loaded audio - will use synth'; });
-
-    // style selection
-    const styleItems = document.querySelectorAll('.style-item');
-    styleItems.forEach(it => {
-      it.addEventListener('click', () => {
-        styleItems.forEach(s => s.classList.remove('active'));
-        it.classList.add('active');
-        chosenStyle = it.dataset.style;
-      });
-    });
-
-    // pattern selection
-    const patternItems = document.querySelectorAll('.pattern-item');
-    patternItems.forEach(it => {
-      it.addEventListener('click', () => {
-        patternItems.forEach(s => s.classList.remove('active'));
-        it.classList.add('active');
-        chosenPattern = it.dataset.pattern;
-      });
-    });
-
-    document.getElementById('toggleAuto').addEventListener('click', () => {
-      autoEnabled = !autoEnabled;
-      document.getElementById('toggleAuto').textContent = autoEnabled ? 'Pause Auto' : 'Resume Auto';
-    });
-    document.getElementById('resetBtn').addEventListener('click', () => { fireworks.length = 0; particles.length = 0; ctx.fillStyle = '#000'; ctx.fillRect(0,0,W,H); });
-
-    // ensure audio ctx on first gesture
-    document.body.addEventListener('pointerdown', ensureAudioContext, { once: true });
-
-    // show wind label
-    function updateWindLabel() {
-      const val = Math.abs(wind) < 0.01 ? 'off' : wind > 0 ? '→ ' + wind.toFixed(2) : '← ' + Math.abs(wind).toFixed(2);
-      // optional: could place in UI if desired
-      requestAnimationFrame(updateWindLabel);
-    }
-    requestAnimationFrame(updateWindLabel);
-
-    // clamp safety
-    setInterval(() => { config.maxParticles = clamp(Number(config.maxParticles), 200, 4000); }, 2000);
-
-    // Done
-  })();
-  </script>
+            function init() {
+                if (EMAILJS_PUBLIC_KEY !== "YOUR_PUBLIC_KEY") emailjs.init(EMAILJS_PUBLIC_KEY);
+                generateMatrix();
+                renderMatrix();
+                videoOverlay.style.display = 'none';
+                statusDiv.textContent = '';
+                dynamicHint.textContent = '';
+            }
+            init();
+        })();
+    </script>
 </body>
 </html>
