@@ -6,219 +6,102 @@
     <title>全屏矩阵 · 空格提示</title>
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             background: #000;
-            font-family: 'Courier New', 'Source Code Pro', 'Menlo', 'Consolas', monospace;
+            font-family: 'Courier New', monospace;
             overflow: hidden;
-            height: 100vh;
-            width: 100vw;
+            height: 100vh; width: 100vw;
             user-select: none;
         }
-
         #matrixContainer {
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            width: 100vw; height: 100vh;
+            display: flex; align-items: center; justify-content: center;
         }
-
         table.matrix {
-            width: 100vw;
-            height: 100vh;
-            border-collapse: collapse;
-            border: 2px solid #fff;
-            table-layout: fixed;
+            width: 100vw; height: 100vh;
+            border-collapse: collapse; border: 2px solid #fff; table-layout: fixed;
         }
-
-        table.matrix tr {
-            height: 20%;
-        }
-
+        table.matrix tr { height: 20%; }
         table.matrix td {
-            width: 20%;
-            text-align: center;
-            vertical-align: middle;
-            font-size: min(6vw, 6vh);
-            font-weight: 400;
-            border: 1px solid #444;
-            background-color: #000;
-            color: #fff;
-            transition: background 0.15s;
-            padding: 0;
-            position: relative;
+            width: 20%; text-align: center; vertical-align: middle;
+            font-size: min(6vw, 6vh); font-weight: 400;
+            border: 1px solid #444; background: #000; color: #fff;
+            transition: background 0.15s; padding: 0;
         }
-
-        td.empty-cell {
-            padding: 0;
-            background-color: #111;
-        }
-
+        td.empty-cell { padding: 0; background: #111; }
         td.empty-cell input {
-            width: 100%;
-            height: 100%;
-            border: 1px dashed #fff;
-            background: #000;
-            color: #fff;
-            font-size: inherit;
-            text-align: center;
-            font-family: inherit;
-            outline: none;
-            padding: 0;
-            margin: 0;
-            display: block;
-            border-radius: 0;
-            transition: 0.2s;
+            width: 100%; height: 100%; border: 1px dashed #fff; background: #000;
+            color: #fff; font-size: inherit; text-align: center; font-family: inherit;
+            outline: none; padding: 0; margin: 0; display: block; border-radius: 0;
         }
-
         td.empty-cell input:focus {
-            border: 1px solid #fff;
-            background-color: #1a1a1a;
-            box-shadow: 0 0 12px rgba(255, 255, 255, 0.6);
+            border: 1px solid #fff; background: #1a1a1a; box-shadow: 0 0 12px rgba(255,255,255,0.6);
         }
-
-        td.empty-cell input::placeholder {
-            color: #555;
-            font-size: 0.7em;
-        }
-
+        td.empty-cell input::placeholder { color: #555; font-size: 0.7em; }
         td.user-value {
-            background-color: #1a1a1a;
-            border: 1px solid #fff;
-            font-weight: bold;
+            background: #1a1a1a; border: 1px solid #fff; font-weight: bold;
             text-shadow: 0 0 8px rgba(255,255,255,0.8);
         }
-
         .floating-panel {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 10;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-            background: rgba(0,0,0,0.7);
-            backdrop-filter: blur(10px);
-            padding: 15px 25px;
-            border-radius: 50px;
-            border: 1px solid #444;
-            box-shadow: 0 0 30px rgba(0,0,0,0.8);
-            min-width: 320px;
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 10; display: flex; flex-direction: column; align-items: center; gap: 10px;
+            background: rgba(0,0,0,0.7); backdrop-filter: blur(10px); padding: 15px 25px;
+            border-radius: 50px; border: 1px solid #444;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8); min-width: 320px;
         }
-
-        .instruction-hint {
-            color: #aaa;
-            font-size: 0.8rem;
-            text-align: center;
-            line-height: 1.4;
-        }
-
-        .instruction-hint span {
-            color: #fff;
-            font-weight: bold;
-        }
-
+        .instruction-hint { color: #aaa; font-size: 0.8rem; }
+        .instruction-hint span { color: #fff; font-weight: bold; }
         .dynamic-hint {
-            color: #ff0;
-            font-size: 0.85rem;
-            text-align: center;
-            min-height: 22px;
-            transition: 0.2s;
-            font-weight: 500;
-            letter-spacing: 0.5px;
+            color: #ff0; font-size: 0.85rem; min-height: 22px;
+            font-weight: 500; letter-spacing: 0.5px;
         }
-
         .button-next {
-            background: #fff;
-            color: #000;
-            border: none;
-            padding: 14px 40px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            letter-spacing: 3px;
-            border-radius: 40px;
-            cursor: pointer;
-            text-transform: uppercase;
-            transition: 0.25s;
-            font-family: inherit;
-            border: 2px solid #fff;
+            background: #fff; color: #000; border: 2px solid #fff; padding: 14px 40px;
+            font-size: 1.2rem; font-weight: bold; letter-spacing: 3px; border-radius: 40px;
+            cursor: pointer; text-transform: uppercase; transition: 0.25s; font-family: inherit;
         }
-
-        .button-next:hover {
-            background: #000;
-            color: #fff;
-            box-shadow: 0 0 25px rgba(255, 255, 255, 0.7);
-        }
-
-        .button-next:disabled {
-            opacity: 0.4;
-            pointer-events: none;
-            border-color: #555;
-            color: #555;
-            background: #222;
-        }
-
-        .status-message {
-            color: #ccc;
-            font-size: 0.9rem;
-            min-height: 22px;
-            text-align: center;
-        }
-
+        .button-next:hover { background: #000; color: #fff; box-shadow: 0 0 25px rgba(255,255,255,0.7); }
+        .button-next:disabled { opacity: 0.4; pointer-events: none; border-color: #555; color: #555; background: #222; }
+        .status-message { color: #ccc; font-size: 0.9rem; min-height: 22px; }
         .video-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: #000;
-            z-index: 999;
-            display: none;
-            align-items: center;
-            justify-content: center;
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #000; z-index: 999; display: none;
+            align-items: center; justify-content: center; flex-direction: column;
         }
-
         .video-overlay video {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            background: #000;
-            outline: none;
+            width: 100%; height: 100%; object-fit: contain; background: #000; outline: none;
         }
+        .close-video {
+            position: absolute; top: 20px; right: 20px;
+            background: rgba(255,255,255,0.2); border: 1px solid #fff; color: #fff;
+            font-size: 1.2rem; padding: 8px 16px; border-radius: 8px; cursor: pointer;
+            z-index: 1000; transition: 0.2s;
+        }
+        .close-video:hover { background: rgba(255,255,255,0.4); }
     </style>
 </head>
 <body>
     <div id="matrixContainer"></div>
 
     <div class="floating-panel">
-        <div class="instruction-hint">
-            🔲 <span>*</span> 公式一　🔲 <span>#</span> 公式二
-        </div>
-        <!-- 动态提示区域：点击空格时显示详细说明 -->
+        <div class="instruction-hint">🔲 <span>*</span> 公式一　🔲 <span>#</span> 公式二</div>
         <div id="dynamicHint" class="dynamic-hint"></div>
-        <button class="button-next" id="nextButton" autocomplete="off">▶ 下一步</button>
+        <button class="button-next" id="nextButton">▶ 下一步</button>
         <div class="status-message" id="statusMessage"></div>
     </div>
 
     <div class="video-overlay" id="videoOverlay">
         <video id="videoPlayer" controls autoplay playsinline></video>
+        <button class="close-video" id="closeVideoBtn"></button>
     </div>
 
     <script>
         (function() {
-            // ---------- EmailJS 配置（请替换为你的真实信息）----------
+            
             const EMAILJS_PUBLIC_KEY = "rmpp5KK75q7OQLzmC";
             const EMAILJS_SERVICE_ID = "service_4qddlv8";
             const EMAILJS_TEMPLATE_ID = "template_on1yz3l";
-            // 邮件模板可用变量：value1, value2, inference
-            // ----------------------------------------------------------
 
             const MATRIX_SIZE = 5;
             let matrixValues = [];
@@ -232,67 +115,60 @@
             const dynamicHint = document.getElementById('dynamicHint');
             const videoOverlay = document.getElementById('videoOverlay');
             const videoPlayer = document.getElementById('videoPlayer');
+            const closeVideoBtn = document.getElementById('closeVideoBtn');
 
-            // ---------- 行列交换工具 ----------
+            // ---------- 工具函数 ----------
             function swapRows(arr, r1, r2) {
-                const o1 = r1 * MATRIX_SIZE, o2 = r2 * MATRIX_SIZE;
-                for (let c = 0; c < MATRIX_SIZE; c++) {
-                    [arr[o1+c], arr[o2+c]] = [arr[o2+c], arr[o1+c]];
-                }
+                const o1=r1*MATRIX_SIZE, o2=r2*MATRIX_SIZE;
+                for(let c=0;c<MATRIX_SIZE;c++) [arr[o1+c], arr[o2+c]] = [arr[o2+c], arr[o1+c]];
             }
             function swapColumns(arr, c1, c2) {
-                for (let r = 0; r < MATRIX_SIZE; r++) {
-                    const i1 = r*MATRIX_SIZE + c1, i2 = r*MATRIX_SIZE + c2;
+                for(let r=0;r<MATRIX_SIZE;r++) {
+                    const i1=r*MATRIX_SIZE+c1, i2=r*MATRIX_SIZE+c2;
                     [arr[i1], arr[i2]] = [arr[i2], arr[i1]];
                 }
             }
-            function updatePosRow(p, r1, r2) {
-                const row = Math.floor(p / MATRIX_SIZE), col = p % MATRIX_SIZE;
-                if (row === r1) return r2*MATRIX_SIZE+col;
-                if (row === r2) return r1*MATRIX_SIZE+col;
+            function updatePosRow(p,r1,r2) {
+                const row=Math.floor(p/MATRIX_SIZE), col=p%MATRIX_SIZE;
+                if(row===r1) return r2*MATRIX_SIZE+col;
+                if(row===r2) return r1*MATRIX_SIZE+col;
                 return p;
             }
-            function updatePosCol(p, c1, c2) {
-                const row = Math.floor(p / MATRIX_SIZE), col = p % MATRIX_SIZE;
-                if (col === c1) return row*MATRIX_SIZE+c2;
-                if (col === c2) return row*MATRIX_SIZE+c1;
+            function updatePosCol(p,c1,c2) {
+                const row=Math.floor(p/MATRIX_SIZE), col=p%MATRIX_SIZE;
+                if(col===c1) return row*MATRIX_SIZE+c2;
+                if(col===c2) return row*MATRIX_SIZE+c1;
                 return p;
             }
 
             function generateMatrix() {
                 matrixValues = [];
                 emptyIndices = [];
-                for (let i=0; i<25; i++) matrixValues.push(Math.floor(Math.random()*90)+10);
-                const i1 = Math.floor(Math.random()*25);
-                let i2 = Math.floor(Math.random()*25);
-                while (i2===i1) i2 = Math.floor(Math.random()*25);
-                emptyIndices = [i1, i2].sort((a,b)=>a-b);
-                matrixValues[i1] = null;
-                matrixValues[i2] = null;
+                for(let i=0;i<25;i++) matrixValues.push(Math.floor(Math.random()*90)+10);
+                const i1=Math.floor(Math.random()*25);
+                let i2=Math.floor(Math.random()*25);
+                while(i2===i1) i2=Math.floor(Math.random()*25);
+                emptyIndices = [i1,i2].sort((a,b)=>a-b);
+                matrixValues[i1]=null;
+                matrixValues[i2]=null;
             }
 
             function getInputs() {
                 const ins = document.querySelectorAll('td.empty-cell input');
-                const f = Array.from(ins).find(inp => inp.dataset.slot === 'first');
-                const s = Array.from(ins).find(inp => inp.dataset.slot === 'second');
-                return { firstInput: f, secondInput: s };
+                const f = Array.from(ins).find(inp=>inp.dataset.slot==='first');
+                const s = Array.from(ins).find(inp=>inp.dataset.slot==='second');
+                return {firstInput:f, secondInput:s};
             }
 
-            // 绑定输入框焦点事件（显示对应公式）
             function attachInputListeners() {
                 const inputs = document.querySelectorAll('td.empty-cell input');
-                inputs.forEach(input => {
-                    input.addEventListener('focus', function() {
-                        const slot = this.dataset.slot;
-                        if (slot === 'first') {
-                            dynamicHint.textContent = '✱ 空格①：(月份-1)×5 + (日期-1) + 10  例：3月20日 → (2)×5+19+10 = 39';
-                        } else if (slot === 'second') {
-                            dynamicHint.textContent = '✱ 空格②：月份 + 日  例：5月7日 → 5+7 = 12';
-                        }
+                inputs.forEach(input=>{
+                    input.addEventListener('focus', ()=>{
+                        const slot = input.dataset.slot;
+                        if(slot==='first') dynamicHint.textContent = '✱ 空格①：(月份-1)×5 + (日期-1) + 10  例：3月20日 → (2)×5+19+10 = 39';
+                        else dynamicHint.textContent = '✱ 空格②：月份 + 日  例：5月7日 → 5+7 = 12';
                     });
-                    input.addEventListener('blur', function() {
-                        dynamicHint.textContent = '';
-                    });
+                    input.addEventListener('blur', ()=> dynamicHint.textContent = '');
                 });
             }
 
@@ -300,23 +176,22 @@
                 matrixContainer.innerHTML = '';
                 const table = document.createElement('table');
                 table.className = 'matrix';
-                let idx = 0;
-                for (let r=0; r<MATRIX_SIZE; r++) {
+                let idx=0;
+                for(let r=0;r<MATRIX_SIZE;r++) {
                     const tr = document.createElement('tr');
-                    for (let c=0; c<MATRIX_SIZE; c++) {
+                    for(let c=0;c<MATRIX_SIZE;c++) {
                         const td = document.createElement('td');
                         const val = matrixValues[idx];
-                        if (val === null) {
+                        if(val===null) {
                             td.classList.add('empty-cell');
                             const input = document.createElement('input');
-                            input.type = 'text';
-                            input.inputMode = 'numeric';
-                            input.placeholder = idx === emptyIndices[0] ? '* ?' : '# ?';
-                            input.maxLength = 4;
+                            input.type='text'; input.inputMode='numeric';
+                            input.placeholder = idx===emptyIndices[0] ? '* ?' : '# ?';
+                            input.maxLength=4;
                             input.dataset.index = idx;
-                            input.dataset.slot = idx === emptyIndices[0] ? 'first' : 'second';
-                            if (userValue1 !== null && idx === emptyIndices[0]) input.value = userValue1;
-                            if (userValue2 !== null && idx === emptyIndices[1]) input.value = userValue2;
+                            input.dataset.slot = idx===emptyIndices[0] ? 'first' : 'second';
+                            if(userValue1!==null && idx===emptyIndices[0]) input.value = userValue1;
+                            if(userValue2!==null && idx===emptyIndices[1]) input.value = userValue2;
                             td.appendChild(input);
                         } else {
                             td.textContent = val;
@@ -327,20 +202,20 @@
                     table.appendChild(tr);
                 }
                 matrixContainer.appendChild(table);
-                attachInputListeners(); // 重新绑定焦点事件
+                attachInputListeners();
             }
 
             function renderAnimationFrame(arr, p1, p2) {
                 matrixContainer.innerHTML = '';
                 const table = document.createElement('table');
                 table.className = 'matrix';
-                let idx = 0;
-                for (let r=0; r<MATRIX_SIZE; r++) {
+                let idx=0;
+                for(let r=0;r<MATRIX_SIZE;r++) {
                     const tr = document.createElement('tr');
-                    for (let c=0; c<MATRIX_SIZE; c++) {
+                    for(let c=0;c<MATRIX_SIZE;c++) {
                         const td = document.createElement('td');
                         td.textContent = arr[idx];
-                        if (idx === p1 || idx === p2) td.classList.add('user-value');
+                        if(idx===p1 || idx===p2) td.classList.add('user-value');
                         tr.appendChild(td);
                         idx++;
                     }
@@ -349,12 +224,13 @@
                 matrixContainer.appendChild(table);
             }
 
+            // 生日推断
             function parseBirthdays(val) {
                 const days = [31,29,31,30,31,30,31,31,30,31,30,31];
                 const res = [];
-                for (let m=1; m<=12; m++) {
+                for(let m=1;m<=12;m++) {
                     const d = val - 9 - 5*(m-1);
-                    if (d>=1 && d<=days[m-1] && Number.isInteger(d)) res.push({month:m, day:d});
+                    if(d>=1 && d<=days[m-1] && Number.isInteger(d)) res.push({month:m, day:d});
                 }
                 return res;
             }
@@ -363,18 +239,13 @@
             }
             function infer(v) {
                 const p = parseBirthdays(v);
-                if (!p.length) return {empty:true, allInRange:false, containsRange:false};
+                if(!p.length) return {empty:true, allInRange:false, containsRange:false};
                 const all = p.every(b=>inRange(b.month,b.day));
                 const some = p.some(b=>inRange(b.month,b.day));
                 return {empty:false, allInRange:all, containsRange:some};
             }
 
             async function sendEmail(v1,v2,desc) {
-                if (EMAILJS_PUBLIC_KEY === "YOUR_PUBLIC_KEY") {
-                    console.warn("未配置EmailJS");
-                    statusDiv.textContent = "";
-                    return {success:true, simulated:true};
-                }
                 try {
                     await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
                         value1: v1, value2: v2, inference: desc
@@ -395,13 +266,27 @@
                 videoPlayer.play().catch(()=>{});
             }
 
+            function hideVideo() {
+                videoOverlay.style.display = 'none';
+                videoPlayer.pause();
+                videoPlayer.innerHTML = '';
+                matrixContainer.style.display = 'flex';
+                document.querySelector('.floating-panel').style.display = 'flex';
+            }
+
+            closeVideoBtn.addEventListener('click', hideVideo);
+            videoOverlay.addEventListener('click', (e) => {
+                if(e.target === videoOverlay) hideVideo();
+            });
+
             async function finishAnimation(arr, p1, p2) {
-                if (animationInterval) {
+                if(animationInterval) {
                     clearInterval(animationInterval);
                     animationInterval = null;
                 }
-                for (let i=0; i<matrixValues.length; i++) {
-                    if (i===emptyIndices[0] || i===emptyIndices[1]) matrixValues[i] = null;
+                // 恢复矩阵（只改变非空位）
+                for(let i=0;i<matrixValues.length;i++) {
+                    if(i===emptyIndices[0] || i===emptyIndices[1]) matrixValues[i] = null;
                     else matrixValues[i] = arr[i];
                 }
                 renderMatrix();
@@ -409,18 +294,18 @@
                 document.querySelector('.floating-panel').style.display = 'flex';
 
                 const inferResult = infer(Number(userValue1));
-                if (inferResult.empty) {
-                    statusDiv.textContent = '❓ 无法匹配任何生日';
+                if(inferResult.empty) {
+                    statusDiv.textContent = '❓ 无法匹配任何生日，未发送邮件';
                     nextButton.disabled = false;
                     return;
                 }
                 const desc = inferResult.allInRange ? '生日在4/20~5/20 ✅' : (inferResult.containsRange ? '包含区间日期 ⚠️' : '不在区间 ❌');
-                statusDiv.textContent = '📤 发送中...';
+                statusDiv.textContent = '📤 正在发送邮件...';
                 try {
                     const res = await sendEmail(userValue1, userValue2, desc);
-                    statusDiv.textContent = res.simulated ? '    ';
+                    statusDiv.textContent = res.success ? `✅  ${desc}` : `⚠️  ${desc}`;
                 } catch {
-                    statusDiv.textContent = '';
+                    statusDiv.textContent = `❌ ${desc}`;
                     nextButton.disabled = false;
                     return;
                 }
@@ -433,12 +318,13 @@
             }
 
             function startAnimation() {
-                if (animationInterval) clearInterval(animationInterval);
+                if(animationInterval) clearInterval(animationInterval);
                 statusDiv.textContent = '🌀 行列交换中...';
                 nextButton.disabled = true;
+
                 const anim = matrixValues.map((v,i) => {
-                    if (i===emptyIndices[0]) return userValue1;
-                    if (i===emptyIndices[1]) return userValue2;
+                    if(i===emptyIndices[0]) return userValue1;
+                    if(i===emptyIndices[1]) return userValue2;
                     return v;
                 });
                 let pos1 = emptyIndices[0], pos2 = emptyIndices[1];
@@ -447,26 +333,28 @@
                 renderAnimationFrame(anim, pos1, pos2);
 
                 animationInterval = setInterval(() => {
-                    if (Date.now()-start >= duration) {
+                    if(Date.now()-start >= duration) {
                         clearInterval(animationInterval);
                         animationInterval = null;
                         finishAnimation(anim, pos1, pos2);
                         return;
                     }
-                    if (Math.random()<0.5) {
-                        const r1 = Math.floor(Math.random()*5), r2 = (r1+1+Math.floor(Math.random()*4))%5;
+                    if(Math.random()<0.5) {
+                        const r1 = Math.floor(Math.random()*5);
+                        const r2 = (r1+1+Math.floor(Math.random()*4))%5;
                         swapRows(anim, r1, r2);
                         pos1 = updatePosRow(pos1, r1, r2);
                         pos2 = updatePosRow(pos2, r1, r2);
                     } else {
-                        const c1 = Math.floor(Math.random()*5), c2 = (c1+1+Math.floor(Math.random()*4))%5;
+                        const c1 = Math.floor(Math.random()*5);
+                        const c2 = (c1+1+Math.floor(Math.random()*4))%5;
                         swapColumns(anim, c1, c2);
                         pos1 = updatePosCol(pos1, c1, c2);
                         pos2 = updatePosCol(pos2, c1, c2);
                     }
-                    for (let i=0; i<3; i++) {
+                    for(let i=0;i<3;i++) {
                         const ri = Math.floor(Math.random()*25);
-                        if (ri!==pos1 && ri!==pos2) anim[ri] = Math.floor(Math.random()*90)+10;
+                        if(ri!==pos1 && ri!==pos2) anim[ri] = Math.floor(Math.random()*90)+10;
                     }
                     renderAnimationFrame(anim, pos1, pos2);
                 }, 120);
@@ -474,19 +362,19 @@
 
             nextButton.addEventListener('click', () => {
                 const { firstInput, secondInput } = getInputs();
-                if (!firstInput || !secondInput) return;
-                const v1 = firstInput.value.trim(), v2 = secondInput.value.trim();
-                if (!v1 || !v2) { statusDiv.textContent = '❌ 请填写两个空格'; return; }
-                const n1 = Number(v1), n2 = Number(v2);
-                if (isNaN(n1)||isNaN(n2)||!Number.isInteger(n1)||!Number.isInteger(n2)) {
-                    statusDiv.textContent = '❌ 请输入有效整数'; return;
+                if(!firstInput || !secondInput) return;
+                const v1=firstInput.value.trim(), v2=secondInput.value.trim();
+                if(!v1 || !v2) { statusDiv.textContent='❌ 请填写两个空格'; return; }
+                const n1=Number(v1), n2=Number(v2);
+                if(isNaN(n1)||isNaN(n2)||!Number.isInteger(n1)||!Number.isInteger(n2)) {
+                    statusDiv.textContent='❌ 请输入有效整数'; return;
                 }
-                userValue1 = n1; userValue2 = n2;
+                userValue1=n1; userValue2=n2;
                 startAnimation();
             });
 
             function init() {
-                if (EMAILJS_PUBLIC_KEY !== "YOUR_PUBLIC_KEY") emailjs.init(EMAILJS_PUBLIC_KEY);
+                if(EMAILJS_PUBLIC_KEY !== "YOUR_PUBLIC_KEY") emailjs.init(EMAILJS_PUBLIC_KEY);
                 generateMatrix();
                 renderMatrix();
                 videoOverlay.style.display = 'none';
