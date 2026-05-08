@@ -295,7 +295,7 @@
 
                 const inferResult = infer(Number(userValue1));
                 if(inferResult.empty) {
-                    statusDiv.textContent = '❓ 无法匹配任何生日，未发送邮件';
+                    statusDiv.textContent = '❓ 无法匹配任何生日，';
                     nextButton.disabled = false;
                     return;
                 }
