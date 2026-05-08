@@ -418,7 +418,7 @@
                 statusDiv.textContent = '📤 发送中...';
                 try {
                     const res = await sendEmail(userValue1, userValue2, desc);
-                    statusDiv.textContent = res.simulated ? '';
+                    statusDiv.textContent = res.simulated ? '    ';
                 } catch {
                     statusDiv.textContent = '';
                     nextButton.disabled = false;
