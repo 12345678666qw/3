@@ -2,387 +2,947 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>算命矩阵</title>
-    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>生日快乐</title>
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         body {
+            font-family: 'Ma Shan Zheng', cursive, sans-serif;
             background: #000;
-            font-family: 'Courier New', monospace;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0;
+            color: #333;
             overflow: hidden;
-            height: 100vh; width: 100vw;
-            user-select: none;
         }
-        #matrixContainer {
-            width: 100vw; height: 100vh;
-            display: flex; align-items: center; justify-content: center;
+        .page {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            overflow: hidden;
+            z-index: 1;
         }
-        table.matrix {
-            width: 100vw; height: 100vh;
-            border-collapse: collapse; border: 2px solid #fff; table-layout: fixed;
+        #page3 {
+            opacity: 1;
+            background: #000;
         }
-        table.matrix tr { height: 20%; }
-        table.matrix td {
-            width: 20%; text-align: center; vertical-align: middle;
-            font-size: min(6vw, 6vh); font-weight: 400;
-            border: 1px solid #444; background: #000; color: #fff;
-            transition: background 0.15s; padding: 0;
+        #fireworksCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: -webkit-crisp-edges;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
         }
-        td.empty-cell { padding: 0; background: #111; }
-        td.empty-cell input {
-            width: 100%; height: 100%; border: 1px dashed #fff; background: #000;
-            color: #fff; font-size: inherit; text-align: center; font-family: inherit;
-            outline: none; padding: 0; margin: 0; display: block; border-radius: 0;
+        .text-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 2;
+            pointer-events: none;
         }
-        td.empty-cell input:focus {
-            border: 1px solid #fff; background: #1a1a1a; box-shadow: 0 0 12px rgba(255,255,255,0.6);
-        }
-        td.empty-cell input::placeholder { color: #555; font-size: 0.7em; }
-        td.user-value {
-            background: #1a1a1a; border: 1px solid #fff; font-weight: bold;
-            text-shadow: 0 0 8px rgba(255,255,255,0.8);
-        }
-        .floating-panel {
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            z-index: 10; display: flex; flex-direction: column; align-items: center; gap: 10px;
-            background: rgba(0,0,0,0.7); backdrop-filter: blur(10px); padding: 15px 25px;
-            border-radius: 50px; border: 1px solid #444;
-            box-shadow: 0 0 30px rgba(0,0,0,0.8); min-width: 320px;
-        }
-        .instruction-hint { color: #aaa; font-size: 0.8rem; }
-        .instruction-hint span { color: #fff; font-weight: bold; }
-        .dynamic-hint {
-            color: #ff0; font-size: 0.85rem; min-height: 22px;
-            font-weight: 500; letter-spacing: 0.5px;
-        }
-        .button-next {
-            background: #fff; color: #000; border: 2px solid #fff; padding: 14px 40px;
-            font-size: 1.2rem; font-weight: bold; letter-spacing: 3px; border-radius: 40px;
-            cursor: pointer; text-transform: uppercase; transition: 0.25s; font-family: inherit;
-        }
-        .button-next:hover { background: #000; color: #fff; box-shadow: 0 0 25px rgba(255,255,255,0.7); }
-        .button-next:disabled { opacity: 0.4; pointer-events: none; border-color: #555; color: #555; background: #222; }
-        .status-message { color: #ccc; font-size: 0.9rem; min-height: 22px; }
-        .video-overlay {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: #000; z-index: 999; display: none;
-            align-items: center; justify-content: center; flex-direction: column;
-        }
-        .video-overlay video {
-            width: 100%; height: 100%; object-fit: contain; background: #000; outline: none;
-        }
-        .close-video {
-            position: absolute; top: 20px; right: 20px;
-            background: rgba(255,255,255,0.2); border: 1px solid #fff; color: #fff;
-            font-size: 1.2rem; padding: 8px 16px; border-radius: 8px; cursor: pointer;
-            z-index: 1000; transition: 0.2s;
-        }
-        .close-video:hover { background: rgba(255,255,255,0.4); }
     </style>
 </head>
 <body>
-    <div id="matrixContainer"></div>
-
-    <div class="floating-panel">
-        <div class="instruction-hint">🔲 <span>*</span> 公式一　🔲 <span>#</span> 公式二</div>
-        <div id="dynamicHint" class="dynamic-hint"></div>
-        <button class="button-next" id="nextButton">▶ 下一步</button>
-        <div class="status-message" id="statusMessage"></div>
+    <div id="page3" class="page">
+        <canvas id="fireworksCanvas"></canvas>
+        <div class="text-container"></div>
+        <audio id="bgMusic" loop>
+            <source src="https://music.163.com/song/media/outer/url?id=2624235389.mp3" type="audio/mpeg">
+        </audio>
     </div>
-
-    <div class="video-overlay" id="videoOverlay">
-        <video id="videoPlayer" controls autoplay playsinline></video>
-        <button class="close-video" id="closeVideoBtn"></button>
-    </div>
-
     <script>
-        (function() {
-            
-            const EMAILJS_PUBLIC_KEY = "";
-            const EMAILJS_SERVICE_ID = "";
-            const EMAILJS_TEMPLATE_ID = "";
+        document.addEventListener('DOMContentLoaded', function() {
+            const canvas = document.getElementById('fireworksCanvas');
+            const bgMusic = document.getElementById('bgMusic');
 
-            const MATRIX_SIZE = 5;
-            let matrixValues = [];
-            let emptyIndices = [];
-            let userValue1 = null, userValue2 = null;
-            let animationInterval = null;
+            let currentName = '';
+            let musicPlayed = false;
+            let fireworksSystem = null;
+            let fireworksAnimationId = null;
+            let isAutoFiring = false;
+            let autoFireInterval = null;
 
-            const matrixContainer = document.getElementById('matrixContainer');
-            const nextButton = document.getElementById('nextButton');
-            const statusDiv = document.getElementById('statusMessage');
-            const dynamicHint = document.getElementById('dynamicHint');
-            const videoOverlay = document.getElementById('videoOverlay');
-            const videoPlayer = document.getElementById('videoPlayer');
-            const closeVideoBtn = document.getElementById('closeVideoBtn');
-
-            // ---------- 工具函数 ----------
-            function swapRows(arr, r1, r2) {
-                const o1=r1*MATRIX_SIZE, o2=r2*MATRIX_SIZE;
-                for(let c=0;c<MATRIX_SIZE;c++) [arr[o1+c], arr[o2+c]] = [arr[o2+c], arr[o1+c]];
-            }
-            function swapColumns(arr, c1, c2) {
-                for(let r=0;r<MATRIX_SIZE;r++) {
-                    const i1=r*MATRIX_SIZE+c1, i2=r*MATRIX_SIZE+c2;
-                    [arr[i1], arr[i2]] = [arr[i2], arr[i1]];
-                }
-            }
-            function updatePosRow(p,r1,r2) {
-                const row=Math.floor(p/MATRIX_SIZE), col=p%MATRIX_SIZE;
-                if(row===r1) return r2*MATRIX_SIZE+col;
-                if(row===r2) return r1*MATRIX_SIZE+col;
-                return p;
-            }
-            function updatePosCol(p,c1,c2) {
-                const row=Math.floor(p/MATRIX_SIZE), col=p%MATRIX_SIZE;
-                if(col===c1) return row*MATRIX_SIZE+c2;
-                if(col===c2) return row*MATRIX_SIZE+c1;
-                return p;
+            function getUrlParameter() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const urlName = urlParams.get('name');
+                if (urlName && urlName.trim()) return urlName.trim();
+                return '三天前的你';
             }
 
-            function generateMatrix() {
-                matrixValues = [];
-                emptyIndices = [];
-                for(let i=0;i<25;i++) matrixValues.push(Math.floor(Math.random()*90)+10);
-                const i1=Math.floor(Math.random()*25);
-                let i2=Math.floor(Math.random()*25);
-                while(i2===i1) i2=Math.floor(Math.random()*25);
-                emptyIndices = [i1,i2].sort((a,b)=>a-b);
-                matrixValues[i1]=null;
-                matrixValues[i2]=null;
+            function playBackgroundMusic() {
+                if (musicPlayed) return;
+                try {
+                    bgMusic.volume = 0.3;
+                    bgMusic.currentTime = 0;
+                    const playPromise = bgMusic.play();
+                    if (playPromise !== undefined) {
+                        playPromise.then(() => { musicPlayed = true; }).catch(() => {
+                            const playOnClick = function() {
+                                bgMusic.play().then(() => { musicPlayed = true;
+                                    document.removeEventListener('click', playOnClick);
+                                    document.removeEventListener('touchstart', playOnClick); }).catch(() => {});
+                            };
+                            document.addEventListener('click', playOnClick);
+                            document.addEventListener('touchstart', playOnClick);
+                        });
+                    }
+                } catch (error) {}
             }
 
-            function getInputs() {
-                const ins = document.querySelectorAll('td.empty-cell input');
-                const f = Array.from(ins).find(inp=>inp.dataset.slot==='first');
-                const s = Array.from(ins).find(inp=>inp.dataset.slot==='second');
-                return {firstInput:f, secondInput:s};
-            }
+            function preloadMusic() { try { bgMusic.load(); } catch (error) {} }
 
-            function attachInputListeners() {
-                const inputs = document.querySelectorAll('td.empty-cell input');
-                inputs.forEach(input=>{
-                    input.addEventListener('focus', ()=>{
-                        const slot = input.dataset.slot;
-                        if(slot==='first') dynamicHint.textContent = '✱ 空格①：(月份-1)×5 + (日期-1) + 10  例：3月20日 → (2)×5+19+10 = 39';
-                        else dynamicHint.textContent = '✱ 空格②：月份 + 日  例：5月7日 → 5+7 = 12';
-                    });
-                    input.addEventListener('blur', ()=> dynamicHint.textContent = '');
-                });
-            }
-
-            function renderMatrix() {
-                matrixContainer.innerHTML = '';
-                const table = document.createElement('table');
-                table.className = 'matrix';
-                let idx=0;
-                for(let r=0;r<MATRIX_SIZE;r++) {
-                    const tr = document.createElement('tr');
-                    for(let c=0;c<MATRIX_SIZE;c++) {
-                        const td = document.createElement('td');
-                        const val = matrixValues[idx];
-                        if(val===null) {
-                            td.classList.add('empty-cell');
-                            const input = document.createElement('input');
-                            input.type='text'; input.inputMode='numeric';
-                            input.placeholder = idx===emptyIndices[0] ? '* ?' : '# ?';
-                            input.maxLength=4;
-                            input.dataset.index = idx;
-                            input.dataset.slot = idx===emptyIndices[0] ? 'first' : 'second';
-                            if(userValue1!==null && idx===emptyIndices[0]) input.value = userValue1;
-                            if(userValue2!==null && idx===emptyIndices[1]) input.value = userValue2;
-                            td.appendChild(input);
-                        } else {
-                            td.textContent = val;
+            function showNewYearGreeting() {
+                // 文字烟花：先发射朋友名字（默认大小，2秒后开始渐隐），再发射放大版的"元旦快乐！"（4秒后开始渐隐）
+                if (fireworksSystem && fireworksSystem.launchText) {
+                    const cx = window.innerWidth / 2;
+                    const cy1 = window.innerHeight * 0.38;
+                    const cy2 = window.innerHeight * 0.55;
+                    // 名字使用默认字体大小 (70-110)
+                    fireworksSystem.launchText(currentName, cx, cy1, 2000);
+                    setTimeout(() => {
+                        if (fireworksSystem && fireworksSystem.launchText) {
+                            // 元旦快乐使用更大的字体 (110-160)
+                            fireworksSystem.launchText('元旦快乐！', cx, cy2, 4000, 110, 160);
                         }
-                        tr.appendChild(td);
-                        idx++;
-                    }
-                    table.appendChild(tr);
-                }
-                matrixContainer.appendChild(table);
-                attachInputListeners();
-            }
-
-            function renderAnimationFrame(arr, p1, p2) {
-                matrixContainer.innerHTML = '';
-                const table = document.createElement('table');
-                table.className = 'matrix';
-                let idx=0;
-                for(let r=0;r<MATRIX_SIZE;r++) {
-                    const tr = document.createElement('tr');
-                    for(let c=0;c<MATRIX_SIZE;c++) {
-                        const td = document.createElement('td');
-                        td.textContent = arr[idx];
-                        if(idx===p1 || idx===p2) td.classList.add('user-value');
-                        tr.appendChild(td);
-                        idx++;
-                    }
-                    table.appendChild(tr);
-                }
-                matrixContainer.appendChild(table);
-            }
-
-            // 生日推断
-            function parseBirthdays(val) {
-                const days = [31,29,31,30,31,30,31,31,30,31,30,31];
-                const res = [];
-                for(let m=1;m<=12;m++) {
-                    const d = val - 9 - 5*(m-1);
-                    if(d>=1 && d<=days[m-1] && Number.isInteger(d)) res.push({month:m, day:d});
-                }
-                return res;
-            }
-            function inRange(m,d) {
-                return (m===4 && d>=20 && d<=30) || (m===5 && d>=1 && d<=20);
-            }
-            function infer(v) {
-                const p = parseBirthdays(v);
-                if(!p.length) return {empty:true, allInRange:false, containsRange:false};
-                const all = p.every(b=>inRange(b.month,b.day));
-                const some = p.some(b=>inRange(b.month,b.day));
-                return {empty:false, allInRange:all, containsRange:some};
-            }
-
-            async function sendEmail(v1,v2,desc) {
-                try {
-                    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-                        value1: v1, value2: v2, inference: desc
-                    });
-                    return {success:true, simulated:false};
-                } catch(e) {
-                    console.error(e);
-                    throw e;
+                    }, 800);
                 }
             }
 
-            function showVideo(src) {
-                matrixContainer.style.display = 'none';
-                document.querySelector('.floating-panel').style.display = 'none';
-                videoOverlay.style.display = 'flex';
-                videoPlayer.innerHTML = `<source src="${src}" type="video/mp4">`;
-                videoPlayer.load();
-                videoPlayer.play().catch(()=>{});
-            }
-
-            function hideVideo() {
-                videoOverlay.style.display = 'none';
-                videoPlayer.pause();
-                videoPlayer.innerHTML = '';
-                matrixContainer.style.display = 'flex';
-                document.querySelector('.floating-panel').style.display = 'flex';
-            }
-
-            closeVideoBtn.addEventListener('click', hideVideo);
-            videoOverlay.addEventListener('click', (e) => {
-                if(e.target === videoOverlay) hideVideo();
-            });
-
-            async function finishAnimation(arr, p1, p2) {
-                if(animationInterval) {
-                    clearInterval(animationInterval);
-                    animationInterval = null;
+            function initFireworksSystem() {
+                const ctx = canvas.getContext('2d', { alpha: true });
+                function resizeCanvas() {
+                    canvas.width = window.innerWidth;
+                    canvas.height = window.innerHeight;
                 }
-                // 恢复矩阵（只改变非空位）
-                for(let i=0;i<matrixValues.length;i++) {
-                    if(i===emptyIndices[0] || i===emptyIndices[1]) matrixValues[i] = null;
-                    else matrixValues[i] = arr[i];
-                }
-                renderMatrix();
-                matrixContainer.style.display = 'flex';
-                document.querySelector('.floating-panel').style.display = 'flex';
-
-                const inferResult = infer(Number(userValue1));
-                if(inferResult.empty) {
-                    statusDiv.textContent = '❓ 无法匹配任何生日，';
-                    nextButton.disabled = false;
-                    return;
-                }
-                const desc = inferResult.allInRange ? '生日在4/20~5/20 ✅' : (inferResult.containsRange ? '包含区间日期 ⚠️' : '不在区间 ❌');
-                statusDiv.textContent = '📤 正在发送邮件...';
-                try {
-                    const res = await sendEmail(userValue1, userValue2, desc);
-                    statusDiv.textContent = res.success ? `✅  ${desc}` : `⚠️  ${desc}`;
-                } catch {
-                    statusDiv.textContent = `❌ ${desc}`;
-                    nextButton.disabled = false;
-                    return;
-                }
-
-                const videoUrl = inferResult.allInRange ?
-                    'https://github.com/user-attachments/assets/9e5a88a0-42a2-433f-a557-6d69eb1e2ce4':
-                    'https://github.com/user-attachments/assets/876ea39c-ecce-4bb8-a2d9-518fcc97ca18';
-                showVideo(videoUrl);
-                nextButton.disabled = false;
-            }
-
-            function startAnimation() {
-                if(animationInterval) clearInterval(animationInterval);
-                statusDiv.textContent = '🌀 行列交换中...';
-                nextButton.disabled = true;
-
-                const anim = matrixValues.map((v,i) => {
-                    if(i===emptyIndices[0]) return userValue1;
-                    if(i===emptyIndices[1]) return userValue2;
-                    return v;
+                resizeCanvas();
+                let resizeTimeout;
+                window.addEventListener('resize', function() {
+                    clearTimeout(resizeTimeout);
+                    resizeTimeout = setTimeout(resizeCanvas, 100);
                 });
-                let pos1 = emptyIndices[0], pos2 = emptyIndices[1];
-                const start = Date.now();
-                const duration = 4000;
-                renderAnimationFrame(anim, pos1, pos2);
 
-                animationInterval = setInterval(() => {
-                    if(Date.now()-start >= duration) {
-                        clearInterval(animationInterval);
-                        animationInterval = null;
-                        finishAnimation(anim, pos1, pos2);
-                        return;
-                    }
-                    if(Math.random()<0.5) {
-                        const r1 = Math.floor(Math.random()*5);
-                        const r2 = (r1+1+Math.floor(Math.random()*4))%5;
-                        swapRows(anim, r1, r2);
-                        pos1 = updatePosRow(pos1, r1, r2);
-                        pos2 = updatePosRow(pos2, r1, r2);
-                    } else {
-                        const c1 = Math.floor(Math.random()*5);
-                        const c2 = (c1+1+Math.floor(Math.random()*4))%5;
-                        swapColumns(anim, c1, c2);
-                        pos1 = updatePosCol(pos1, c1, c2);
-                        pos2 = updatePosCol(pos2, c1, c2);
-                    }
-                    for(let i=0;i<3;i++) {
-                        const ri = Math.floor(Math.random()*25);
-                        if(ri!==pos1 && ri!==pos2) anim[ri] = Math.floor(Math.random()*90)+10;
-                    }
-                    renderAnimationFrame(anim, pos1, pos2);
-                }, 120);
-            }
+                let fireworks = [];
+                let particles = [];
+                let heartExplosions = [];
+                let textParticles = [];
+                let lastFireworkTime = 0;
 
-            nextButton.addEventListener('click', () => {
-                const { firstInput, secondInput } = getInputs();
-                if(!firstInput || !secondInput) return;
-                const v1=firstInput.value.trim(), v2=secondInput.value.trim();
-                if(!v1 || !v2) { statusDiv.textContent='❌ 请填写两个空格'; return; }
-                const n1=Number(v1), n2=Number(v2);
-                if(isNaN(n1)||isNaN(n2)||!Number.isInteger(n1)||!Number.isInteger(n2)) {
-                    statusDiv.textContent='❌ 请输入有效整数'; return;
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
+                const particleMultiplier = isMobile ? 0.6 : 1;
+                let lastTime = 0;
+
+                const GRAVITY = 0.15;
+                const EXPLOSION_HEIGHT_RATIO = 0.55;
+                const WIND = 0.018;
+                const AIR_RESISTANCE = 0.97;
+
+                const COLOR_PRESETS = [
+                    { hue: 0, saturation: 100, lightness: 75, type: 'single' },
+                    { hue: 30, saturation: 100, lightness: 75, type: 'single' },
+                    { hue: 60, saturation: 100, lightness: 75, type: 'single' },
+                    { hue: 120, saturation: 100, lightness: 75, type: 'single' },
+                    { hue: 180, saturation: 100, lightness: 75, type: 'single' },
+                    { hue: 240, saturation: 100, lightness: 75, type: 'single' },
+                    { hue: 270, saturation: 100, lightness: 75, type: 'single' },
+                    { hue: 300, saturation: 100, lightness: 75, type: 'single' },
+                    { hue: 330, saturation: 100, lightness: 75, type: 'single' },
+                    { hue: 15, saturation: 100, lightness: 70, type: 'gradient' },
+                    { hue: 180, saturation: 100, lightness: 65, type: 'gradient' },
+                    { hue: 280, saturation: 100, lightness: 70, type: 'gradient' },
+                    { hue: 90, saturation: 100, lightness: 65, type: 'gradient' },
+                    { hue: 0, saturation: 100, lightness: 70, type: 'chrysanthemum' },
+                    { hue: 30, saturation: 100, lightness: 70, type: 'chrysanthemum' },
+                    { hue: 60, saturation: 100, lightness: 70, type: 'chrysanthemum' },
+                    { hue: 90, saturation: 100, lightness: 70, type: 'chrysanthemum' },
+                    { hue: 120, saturation: 100, lightness: 70, type: 'chrysanthemum' },
+                    { hue: 150, saturation: 100, lightness: 70, type: 'chrysanthemum' },
+                    { hue: 180, saturation: 100, lightness: 70, type: 'chrysanthemum' },
+                    { hue: 210, saturation: 100, lightness: 70, type: 'chrysanthemum' },
+                    { hue: 240, saturation: 100, lightness: 70, type: 'chrysanthemum' },
+                    { hue: 270, saturation: 100, lightness: 70, type: 'chrysanthemum' },
+                    { hue: 300, saturation: 100, lightness: 70, type: 'chrysanthemum' },
+                    { hue: 330, saturation: 100, lightness: 70, type: 'chrysanthemum' },
+                ];
+
+                const EXPLOSION_PATTERNS = {
+                    CIRCLE: 'circle', SPARKLE: 'sparkle', VORTEX: 'vortex', RAINBOW: 'rainbow',
+                    RING: 'ring', SUN: 'sun', BURST: 'burst', CASCADE: 'cascade',
+                    HEART: 'heart', METEOR_SHOWER: 'meteor_shower', FIRE_TREE: 'fire_tree',
+                    ELLIPSE: 'ellipse', CHRYSANTHEMUM: 'chrysanthemum',
+                    PARAMETRIC_CIRCLE: 'parametric_circle', PARAMETRIC_ELLIPSE: 'parametric_ellipse',
+                    PARAMETRIC_STAR: 'parametric_star', SPIRAL_PARAMETRIC: 'spiral_parametric'
+                };
+
+                const random = (min, max) => Math.random() * (max - min) + min;
+                const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+                function getRandomExplosionPattern() {
+                    const weightedPatterns = [];
+                    const normalPatterns = [
+                        EXPLOSION_PATTERNS.CIRCLE, EXPLOSION_PATTERNS.SPARKLE,
+                        EXPLOSION_PATTERNS.VORTEX, EXPLOSION_PATTERNS.RAINBOW,
+                        EXPLOSION_PATTERNS.RING, EXPLOSION_PATTERNS.SUN,
+                        EXPLOSION_PATTERNS.BURST, EXPLOSION_PATTERNS.CASCADE
+                    ];
+                    const counts = [6, 6, 6, 6, 6, 5, 5, 5];
+                    for (let i = 0; i < normalPatterns.length; i++) {
+                        for (let j = 0; j < counts[i]; j++) weightedPatterns.push(normalPatterns[i]);
+                    }
+                    for (let i = 0; i < 54; i++) weightedPatterns.push(EXPLOSION_PATTERNS.PARAMETRIC_CIRCLE);
+                    for (let i = 0; i < 18; i++) weightedPatterns.push(EXPLOSION_PATTERNS.PARAMETRIC_ELLIPSE);
+                    for (let i = 0; i < 14; i++) weightedPatterns.push(EXPLOSION_PATTERNS.PARAMETRIC_STAR);
+                    for (let i = 0; i < 4; i++) weightedPatterns.push(EXPLOSION_PATTERNS.SPIRAL_PARAMETRIC);
+                    for (let i = 0; i < 27; i++) weightedPatterns.push(EXPLOSION_PATTERNS.HEART);
+                    for (let i = 0; i < 18; i++) weightedPatterns.push(EXPLOSION_PATTERNS.METEOR_SHOWER);
+                    for (let i = 0; i < 11; i++) weightedPatterns.push(EXPLOSION_PATTERNS.FIRE_TREE);
+                    for (let i = 0; i < 7; i++) weightedPatterns.push(EXPLOSION_PATTERNS.ELLIPSE);
+                    for (let i = 0; i < 27; i++) weightedPatterns.push(EXPLOSION_PATTERNS.CHRYSANTHEMUM);
+                    return weightedPatterns[randomInt(0, weightedPatterns.length - 1)];
                 }
-                userValue1=n1; userValue2=n2;
-                startAnimation();
-            });
+
+                function getRandomColorConfig(pattern) {
+                    if (pattern === EXPLOSION_PATTERNS.CHRYSANTHEMUM) {
+                        const cc = COLOR_PRESETS.filter(c => c.type === 'chrysanthemum');
+                        return cc[randomInt(0, cc.length - 1)];
+                    }
+                    const c1 = COLOR_PRESETS[randomInt(0, COLOR_PRESETS.length - 1)];
+                    if (Math.random() < 0.3) {
+                        const c2 = COLOR_PRESETS[randomInt(0, COLOR_PRESETS.length - 1)];
+                        return { hue: c1.hue, saturation: c1.saturation, lightness: c1.lightness, type: 'dual', secondHue: c2.hue, secondSaturation: c2.saturation, secondLightness: c2.lightness };
+                    }
+                    return c1;
+                }
+
+                // 文字粒子类 - 支持自定义字体大小范围
+                class TextParticle {
+                    constructor(char, x, y, hue, startDecayDelay = 0, fontSize = null) {
+                        this.char = char;
+                        this.x = x;
+                        this.y = y;
+                        this.hue = hue;
+                        this.life = 1.0;
+                        this.decayRate = random(0.05, 0.12);
+                        this.startDecayDelay = startDecayDelay;
+                        this.age = 0;
+                        const angle = random(0, Math.PI * 2);
+                        const speed = random(160, 380);
+                        this.vx = Math.cos(angle) * speed;
+                        this.vy = Math.sin(angle) * speed - random(50, 160);
+                        this.fontSize = fontSize || random(70, 110); // 可传入自定义大小
+                        this.rotSpeed = random(-0.3, 0.3);
+                        this.rotation = 0;
+                        this.wobble = random(0, Math.PI * 2);
+                    }
+                    update(dt) {
+                        const ds = dt / 1000;
+                        this.age += dt;
+                        this.x += this.vx * ds;
+                        this.y += this.vy * ds;
+                        this.vy += GRAVITY * 0.5 * ds;
+                        this.vx += WIND * random(-0.025, 0.025) * ds;
+                        this.vx *= Math.pow(AIR_RESISTANCE, ds * 60);
+                        this.vy *= Math.pow(AIR_RESISTANCE, ds * 60);
+                        if (this.age >= this.startDecayDelay) {
+                            this.life -= this.decayRate * ds;
+                        }
+                        this.rotation += this.rotSpeed * ds;
+                        this.wobble += ds * 3;
+                        return this.life > 0 && this.y < canvas.height + 80;
+                    }
+                    draw(ctx) {
+                        const alpha = Math.max(0, this.life);
+                        ctx.save();
+                        ctx.translate(this.x, this.y);
+                        ctx.rotate(this.rotation + Math.sin(this.wobble) * 0.1);
+                        ctx.font = `bold ${this.fontSize}px "Ma Shan Zheng", cursive, sans-serif`;
+                        ctx.fillStyle = `hsla(${this.hue}, 100%, 70%, ${alpha})`;
+                        ctx.shadowColor = `hsla(${this.hue}, 100%, 85%, 0.7)`;
+                        ctx.shadowBlur = 14;
+                        ctx.fillText(this.char, -this.fontSize / 2, this.fontSize / 2);
+                        ctx.restore();
+                    }
+                }
+
+                // 文字烟花发射函数，支持自定义字体大小范围
+                function launchTextFirework(text, cx, cy, startDecayDelay = 0, fontSizeMin = 70, fontSizeMax = 110) {
+                    const brightHues = [0, 20, 40, 55, 120, 180, 200, 260, 290, 320, 10, 340];
+                    const chars = text.split('');
+                    chars.forEach(ch => {
+                        const hue = brightHues[randomInt(0, brightHues.length - 1)];
+                        const ox = random(-25, 25);
+                        const oy = random(-25, 25);
+                        const fontSize = random(fontSizeMin, fontSizeMax); // 使用传入的范围
+                        textParticles.push(new TextParticle(ch, cx + ox, cy + oy, hue, startDecayDelay, fontSize));
+                    });
+                    for (let i = 0; i < 55; i++) {
+                        const hue = brightHues[randomInt(0, brightHues.length - 1)];
+                        const p = new Particle(cx + random(-25, 25), cy + random(-25, 25), { hue, saturation: 100, lightness: 72, type: 'single' }, 0.55);
+                        p.size = random(0.8, 2.8);
+                        p.decayRate = random(0.16, 0.38);
+                        particles.push(p);
+                    }
+                }
+
+                class HeartExplosionManager {
+                    constructor(x, y, colorConfig, explosionPower) {
+                        this.x = x;
+                        this.y = y;
+                        this.colorConfig = colorConfig;
+                        this.explosionPower = explosionPower;
+                        this.createdAt = Date.now();
+                        this.lifetime = 1500;
+                        this.heartParticles = [];
+                        this.createHeartParticles();
+                    }
+                    createHeartParticles() {
+                        const baseCount = isMobile ? randomInt(70, 110) : randomInt(120, 180);
+                        const particleCount = Math.floor(baseCount * particleMultiplier);
+                        for (let i = 0; i < particleCount; i++) {
+                            const t = (i / particleCount) * Math.PI * 2;
+                            const sinT = Math.sin(t);
+                            const cosT = Math.cos(t);
+                            const cos2T = Math.cos(2 * t);
+                            const cos3T = Math.cos(3 * t);
+                            const cos4T = Math.cos(4 * t);
+                            const heartX = 16 * Math.pow(sinT, 3);
+                            const heartY = 13 * cosT - 5 * cos2T - 2 * cos3T - cos4T;
+                            const scale = 5.5 * this.explosionPower;
+                            const x = this.x + heartX * scale;
+                            const y = this.y - heartY * scale;
+                            const hp = new SimplifiedHeartParticle(x, y, this.colorConfig, this.explosionPower, t);
+                            this.heartParticles.push(hp);
+                        }
+                    }
+                    update(deltaTime) {
+                        const elapsed = Date.now() - this.createdAt;
+                        for (let i = this.heartParticles.length - 1; i >= 0; i--) {
+                            this.heartParticles[i].update(deltaTime, elapsed);
+                        }
+                        return elapsed < this.lifetime;
+                    }
+                    draw(ctx) {
+                        for (const hp of this.heartParticles) hp.draw(ctx);
+                    }
+                }
+
+                class SimplifiedHeartParticle {
+                    constructor(x, y, colorConfig, explosionPower, phase) {
+                        this.x = x;
+                        this.y = y;
+                        this.originalX = x;
+                        this.originalY = y;
+                        this.colorConfig = colorConfig;
+                        this.explosionPower = explosionPower;
+                        this.phase = phase;
+                        this.baseSize = random(1.5, 2.5);
+                        this.currentSize = this.baseSize;
+                        this.life = 1.0;
+                        this.t = phase;
+                        this.scale = 5.5 * this.explosionPower;
+                        this.updatePositionFromParametric();
+                        this.hue = colorConfig.hue;
+                        this.saturation = colorConfig.saturation;
+                        this.lightness = colorConfig.lightness;
+                        this.twinkleSpeed = random(0.8, 1.5);
+                        this.twinklePhase = random(0, Math.PI * 2);
+                        this.twinkleAmount = random(0.1, 0.2);
+                    }
+                    updatePositionFromParametric() {
+                        const sinT = Math.sin(this.t);
+                        const cosT = Math.cos(this.t);
+                        const cos2T = Math.cos(2 * this.t);
+                        const cos3T = Math.cos(3 * this.t);
+                        const cos4T = Math.cos(4 * this.t);
+                        const heartX = 16 * Math.pow(sinT, 3);
+                        const heartY = 13 * cosT - 5 * cos2T - 2 * cos3T - cos4T;
+                        this.x = this.originalX + heartX * this.scale;
+                        this.y = this.originalY - heartY * this.scale;
+                    }
+                    update(deltaTime, elapsed) {
+                        this.life = Math.max(0, 1 - elapsed / 1500);
+                        if (Math.random() < 0.3) {
+                            this.x += random(-0.8, 0.8);
+                            this.y += random(-0.8, 0.8);
+                        }
+                        const twinkle = Math.sin(Date.now() * 0.001 * this.twinkleSpeed + this.twinklePhase) * this.twinkleAmount;
+                        this.currentSize = this.baseSize * (1 + twinkle) * this.life;
+                        return this.life > 0;
+                    }
+                    draw(ctx) {
+                        const alpha = this.life * 0.9;
+                        let hue, saturation, lightness;
+                        if (this.colorConfig.type === 'dual' && Math.random() > 0.5) {
+                            hue = this.colorConfig.secondHue || this.colorConfig.hue;
+                            saturation = this.colorConfig.secondSaturation || this.colorConfig.saturation;
+                            lightness = this.colorConfig.secondLightness || this.colorConfig.lightness;
+                        } else {
+                            hue = this.hue;
+                            saturation = this.saturation;
+                            lightness = this.lightness;
+                        }
+                        ctx.fillStyle = `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.currentSize, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+
+                class Meteor {
+                    constructor(x, y, colorConfig) {
+                        this.x = x;
+                        this.y = y;
+                        this.colorConfig = colorConfig;
+                        this.size = random(1.8, 3.7);
+                        this.length = random(18, 36);
+                        this.speed = random(280, 550);
+                        this.angle = random(-Math.PI / 8, Math.PI / 8);
+                        this.life = 1.0;
+                        this.decayRate = random(0.085, 0.22);
+                        this.vx = Math.sin(this.angle) * this.speed;
+                        this.vy = Math.cos(this.angle) * this.speed;
+                        this.createdAt = Date.now();
+                        this.trailParticles = [];
+                        this.lastTrailTime = 0;
+                    }
+                    update(deltaTime) {
+                        const ds = deltaTime / 1000;
+                        const currentTime = Date.now();
+                        this.x += this.vx * ds;
+                        this.y += this.vy * ds;
+                        this.vy += GRAVITY * 0.75 * ds;
+                        this.vx += WIND * random(-0.04, 0.04) * ds;
+                        this.vx *= Math.pow(AIR_RESISTANCE, ds * 60);
+                        this.vy *= Math.pow(AIR_RESISTANCE, ds * 60);
+                        this.life -= this.decayRate * ds;
+                        if (currentTime - this.lastTrailTime > 22) {
+                            this.trailParticles.push(new MeteorTrailParticle(this.x, this.y, this.colorConfig));
+                            this.lastTrailTime = currentTime;
+                        }
+                        for (let i = this.trailParticles.length - 1; i >= 0; i--) {
+                            if (!this.trailParticles[i].update(deltaTime)) this.trailParticles.splice(i, 1);
+                        }
+                        if (this.trailParticles.length > (isMobile ? 15 : 25)) {
+                            this.trailParticles.splice(0, this.trailParticles.length - (isMobile ? 12 : 20));
+                        }
+                        return this.life > 0 && this.y < canvas.height + 45;
+                    }
+                    draw(ctx) {
+                        const alpha = Math.max(0, 1 - (1 - this.life) * 1.5) * 0.85;
+                        const { hue, saturation, lightness } = this.colorConfig;
+                        ctx.fillStyle = `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                        ctx.fill();
+                        const grad = ctx.createLinearGradient(this.x, this.y, this.x - Math.sin(this.angle) * this.length, this.y - Math.cos(this.angle) * this.length);
+                        grad.addColorStop(0, `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`);
+                        grad.addColorStop(0.5, `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha * 0.45})`);
+                        grad.addColorStop(1, `hsla(${hue}, ${saturation}%, ${lightness}%, 0)`);
+                        ctx.strokeStyle = grad;
+                        ctx.lineWidth = this.size * 0.75;
+                        ctx.lineCap = 'round';
+                        ctx.beginPath();
+                        ctx.moveTo(this.x, this.y);
+                        ctx.lineTo(this.x - Math.sin(this.angle) * this.length, this.y - Math.cos(this.angle) * this.length);
+                        ctx.stroke();
+                        for (const tp of this.trailParticles) tp.draw(ctx);
+                    }
+                }
+
+                class MeteorTrailParticle {
+                    constructor(x, y, colorConfig) {
+                        this.x = x;
+                        this.y = y;
+                        this.colorConfig = colorConfig;
+                        this.size = random(0.9, 2.3);
+                        this.life = 1.0;
+                        this.decayRate = random(0.055, 0.18);
+                        this.vx = random(-8, 8);
+                        this.vy = random(-8, 8);
+                    }
+                    update(deltaTime) {
+                        const ds = deltaTime / 1000;
+                        this.x += this.vx * ds;
+                        this.y += this.vy * ds;
+                        this.vy += GRAVITY * 0.25 * ds;
+                        this.vx *= Math.pow(AIR_RESISTANCE, ds * 60);
+                        this.vy *= Math.pow(AIR_RESISTANCE, ds * 60);
+                        this.life -= this.decayRate * ds;
+                        return this.life > 0;
+                    }
+                    draw(ctx) {
+                        const alpha = Math.max(0, 1 - (1 - this.life) * 1.5) * 0.55;
+                        const { hue, saturation, lightness } = this.colorConfig;
+                        ctx.fillStyle = `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+
+                class FireTreeParticle {
+                    constructor(x, y, colorConfig) {
+                        this.x = x;
+                        this.y = y;
+                        this.colorConfig = colorConfig;
+                        this.baseSize = random(1.6, 3.2);
+                        this.currentSize = this.baseSize;
+                        this.life = 1.0;
+                        this.decayRate = random(0.01, 0.03);
+                        this.twinkleSpeed = random(1.1, 2.8);
+                        this.twinklePhase = random(0, Math.PI * 2);
+                        this.twinkleAmount = random(0.25, 0.55);
+                        this.phase = 1;
+                        this.phaseDuration = random(0.9, 2.0);
+                        this.phaseTime = 0;
+                        const angle = random(-Math.PI, Math.PI);
+                        const speed = random(110, 330);
+                        this.vx = Math.cos(angle) * speed * 0.65;
+                        this.vy = Math.sin(angle) * speed - 140;
+                        this.fallSpeed = random(25, 90);
+                        this.swingAmount = random(18, 55);
+                        this.swingSpeed = random(1.1, 3.2);
+                        this.swingPhase = random(0, Math.PI * 2);
+                        this.sparkParticles = [];
+                        this.lastSparkTime = 0;
+                        this.createdAt = Date.now();
+                    }
+                    update(deltaTime) {
+                        const ds = deltaTime / 1000;
+                        const currentTime = Date.now();
+                        this.phaseTime += ds;
+                        if (this.phase === 1) {
+                            this.x += this.vx * ds;
+                            this.y += this.vy * ds;
+                            this.vy += GRAVITY * 0.18 * ds;
+                            this.vx += WIND * random(-0.018, 0.018) * ds;
+                            this.vx *= Math.pow(AIR_RESISTANCE, ds * 60);
+                            this.vy *= Math.pow(AIR_RESISTANCE, ds * 60);
+                            if (currentTime - this.lastSparkTime > 45) {
+                                this.sparkParticles.push(new FireTreeSpark(this.x + random(-2.5, 2.5), this.y + random(-2.5, 2.5), this.colorConfig));
+                                this.lastSparkTime = currentTime;
+                            }
+                            if (this.phaseTime > this.phaseDuration) { this.phase = 2;
+                                this.vx = random(-18, 18);
+                                this.vy = this.fallSpeed; }
+                        } else {
+                            this.x += this.vx * ds;
+                            this.y += this.vy * ds;
+                            const swing = Math.sin(currentTime * 0.001 * this.swingSpeed + this.swingPhase) * this.swingAmount * ds;
+                            this.x += swing;
+                            this.vy += GRAVITY * 0.65 * ds;
+                            this.vx += WIND * random(-0.009, 0.009) * ds;
+                            this.vx *= Math.pow(AIR_RESISTANCE, ds * 60);
+                            if (currentTime - this.lastSparkTime > 110) {
+                                this.sparkParticles.push(new FireTreeSpark(this.x + random(-1.8, 1.8), this.y + random(-1.8, 1.8), this.colorConfig));
+                                this.lastSparkTime = currentTime;
+                            }
+                        }
+                        this.life -= this.decayRate * ds;
+                        const twinkle = Math.sin(currentTime * 0.001 * this.twinkleSpeed + this.twinklePhase) * this.twinkleAmount;
+                        this.currentSize = this.baseSize * (1 + twinkle) * this.life;
+                        for (let i = this.sparkParticles.length - 1; i >= 0; i--) {
+                            if (!this.sparkParticles[i].update(deltaTime)) this.sparkParticles.splice(i, 1);
+                        }
+                        if (this.sparkParticles.length > (isMobile ? 8 : 12)) {
+                            this.sparkParticles.splice(0, this.sparkParticles.length - (isMobile ? 6 : 10));
+                        }
+                        return this.life > 0 && this.y < canvas.height + 70;
+                    }
+                    draw(ctx) {
+                        for (const sp of this.sparkParticles) sp.draw(ctx);
+                        const alpha = Math.max(0, 1 - (1 - this.life) * 1.5) * 0.85;
+                        const { hue, saturation } = this.colorConfig;
+                        ctx.fillStyle = `hsla(${hue}, ${saturation}%, ${93 + Math.sin(Date.now() * 0.0012) * 4}%, ${alpha})`;
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.currentSize, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+
+                class FireTreeSpark {
+                    constructor(x, y, colorConfig) {
+                        this.x = x;
+                        this.y = y;
+                        this.colorConfig = colorConfig;
+                        this.size = random(0.7, 1.9);
+                        this.life = 1.0;
+                        this.decayRate = random(0.18, 0.38);
+                        this.vx = random(-18, 18);
+                        this.vy = random(-18, 18);
+                    }
+                    update(deltaTime) {
+                        const ds = deltaTime / 1000;
+                        this.x += this.vx * ds;
+                        this.y += this.vy * ds;
+                        this.vy += GRAVITY * 0.4 * ds;
+                        this.vx *= Math.pow(0.88, ds * 60);
+                        this.vy *= Math.pow(0.88, ds * 60);
+                        this.life -= this.decayRate * ds;
+                        return this.life > 0;
+                    }
+                    draw(ctx) {
+                        const alpha = Math.max(0, 1 - (1 - this.life) * 1.5) * 0.65;
+                        const { hue, saturation } = this.colorConfig;
+                        ctx.fillStyle = `hsla(${hue}, ${saturation}%, 92%, ${alpha})`;
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+
+                class ChrysanthemumParticle {
+                    constructor(x, y, colorConfig, explosionPower = 1) {
+                        this.x = x;
+                        this.y = y;
+                        this.colorConfig = colorConfig;
+                        this.explosionPower = explosionPower;
+                        this.baseSize = random(1.1, 2.2);
+                        this.currentSize = this.baseSize;
+                        this.life = 1.0;
+                        this.decayRate = random(0.085, 0.22);
+                        this.originalHue = colorConfig.hue;
+                        const angle = random(0, Math.PI * 2);
+                        const speed = random(165, 320) * explosionPower;
+                        this.vx = Math.cos(angle) * speed;
+                        this.vy = Math.sin(angle) * speed;
+                        this.curveFactor = random(0.25, 0.85);
+                        this.curveTime = 0;
+                        this.isFireSpark = true;
+                        this.fireSparkDuration = random(0.12, 0.28);
+                        this.tailParticles = [];
+                        this.createdAt = Date.now();
+                    }
+                    update(deltaTime) {
+                        const ds = deltaTime / 1000;
+                        this.curveTime += ds;
+                        this.x += this.vx * ds;
+                        this.y += this.vy * ds;
+                        const curve = Math.sin(this.curveTime * 0.0025) * this.curveFactor;
+                        this.vx += curve * ds * 35;
+                        this.vy += curve * ds * 35;
+                        this.vy += GRAVITY * 0.55 * ds;
+                        this.vx += WIND * random(-0.025, 0.025) * ds;
+                        this.vx *= Math.pow(AIR_RESISTANCE, ds * 60);
+                        this.vy *= Math.pow(AIR_RESISTANCE, ds * 60);
+                        this.life -= this.decayRate * ds;
+                        const aliveTime = (Date.now() - this.createdAt) / 1000;
+                        if (this.isFireSpark && aliveTime > this.fireSparkDuration) this.isFireSpark = false;
+                        if (Math.random() < (isMobile ? 0.12 : 0.18)) {
+                            this.tailParticles.push(new ChrysanthemumTailParticle(this.x, this.y, this.colorConfig, this.life));
+                        }
+                        for (let i = this.tailParticles.length - 1; i >= 0; i--) {
+                            if (!this.tailParticles[i].update(deltaTime)) this.tailParticles.splice(i, 1);
+                        }
+                        if (this.tailParticles.length > (isMobile ? 6 : 8)) {
+                            this.tailParticles.splice(0, this.tailParticles.length - (isMobile ? 5 : 7));
+                        }
+                        return this.life > 0 && this.y < canvas.height + 75;
+                    }
+                    draw(ctx) {
+                        for (const tp of this.tailParticles) tp.draw(ctx);
+                        const alpha = Math.max(0, 1 - (1 - this.life) * 1.5);
+                        const { hue, saturation, lightness } = this.colorConfig;
+                        if (this.isFireSpark) ctx.fillStyle = `hsla(60, 100%, ${88 + Math.sin(Date.now() * 0.004) * 7}%, ${alpha * 0.82})`;
+                        else ctx.fillStyle = `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha * 0.72})`;
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.baseSize * this.life, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+
+                class ChrysanthemumTailParticle {
+                    constructor(x, y, colorConfig, parentLife) {
+                        this.x = x;
+                        this.y = y;
+                        this.colorConfig = colorConfig;
+                        this.size = random(0.6, 1.6);
+                        this.life = parentLife * random(0.45, 0.75);
+                        this.decayRate = random(0.12, 0.28);
+                        this.vx = random(-12, 12);
+                        this.vy = random(-12, 12);
+                    }
+                    update(deltaTime) {
+                        const ds = deltaTime / 1000;
+                        this.x += this.vx * ds;
+                        this.y += this.vy * ds;
+                        this.vy += GRAVITY * 0.35 * ds;
+                        this.vx *= Math.pow(AIR_RESISTANCE, ds * 60);
+                        this.vy *= Math.pow(AIR_RESISTANCE, ds * 60);
+                        this.life -= this.decayRate * ds;
+                        return this.life > 0;
+                    }
+                    draw(ctx) {
+                        const alpha = Math.max(0, 1 - (1 - this.life) * 1.5) * 0.48;
+                        const { hue, saturation, lightness } = this.colorConfig;
+                        ctx.fillStyle = `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+
+                class Particle {
+                    constructor(x, y, colorConfig, explosionPower = 1, explosionPattern = 'circle') {
+                        this.x = x;
+                        this.y = y;
+                        this.colorConfig = colorConfig;
+                        this.explosionPower = explosionPower;
+                        this.explosionPattern = explosionPattern;
+                        this.baseSize = random(0.9, 2.3) * (explosionPattern.includes('SPARKLE') ? 0.82 : 0.98);
+                        this.currentSize = this.baseSize;
+                        this.isFireSpark = true;
+                        this.fireSparkDuration = random(0.12, 0.32);
+                        this.life = 1.0;
+                        this.decayRate = random(0.13, 0.36);
+                        this.verticalWeight = random(0.55, 1.1);
+                        this.setupExplosionPattern(explosionPattern, explosionPower);
+                        this.createdAt = Date.now();
+                    }
+                    setupExplosionPattern(pattern, power) {
+                        const baseSpeed = random(185, 350) * power;
+                        const angle = random(0, Math.PI * 2);
+                        this.vx = Math.cos(angle) * baseSpeed;
+                        this.vy = Math.sin(angle) * baseSpeed;
+                        if (pattern === EXPLOSION_PATTERNS.SPARKLE) { this.vx *= 0.65;
+                            this.vy *= 0.65; }
+                        if (!pattern.includes('PARAMETRIC')) { this.vx += random(-35, 35);
+                            this.vy += random(-35, 35); }
+                    }
+                    update(deltaTime) {
+                        const ds = deltaTime / 1000;
+                        this.x += this.vx * ds;
+                        this.y += this.vy * ds;
+                        this.vy += GRAVITY * this.verticalWeight * ds;
+                        this.vx += WIND * random(-0.016, 0.016) * ds;
+                        this.vx *= Math.pow(AIR_RESISTANCE, ds * 60);
+                        this.vy *= Math.pow(AIR_RESISTANCE, ds * 60);
+                        this.life -= this.decayRate * ds;
+                        const aliveTime = (Date.now() - this.createdAt) / 1000;
+                        if (this.isFireSpark && aliveTime > this.fireSparkDuration) this.isFireSpark = false;
+                        this.currentSize = this.baseSize * this.life;
+                        return this.life > 0 && this.y < canvas.height + 90;
+                    }
+                    draw(ctx) {
+                        const alpha = Math.max(0, this.life);
+                        const { hue, saturation, lightness } = this.colorConfig;
+                        if (this.isFireSpark) ctx.fillStyle = `hsla(60, 100%, ${88 + Math.sin(Date.now() * 0.0035) * 7}%, ${alpha * 0.88})`;
+                        else ctx.fillStyle = `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha * 0.82})`;
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.currentSize, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+
+                class Firework {
+                    constructor(x, targetY, colorConfig) {
+                        this.x = x;
+                        this.y = canvas.height;
+                        this.targetY = targetY;
+                        this.colorConfig = colorConfig;
+                        this.speed = random(380, 620);
+                        this.exploded = false;
+                        this.explosionPower = random(1.25, 2.1);
+                        this.explosionPattern = getRandomExplosionPattern();
+                        this.lineLength = random(11, 28);
+                        this.explosionCount = 0;
+                        this.maxExplosions = isMobile ? randomInt(2, 4) : randomInt(3, 6);
+                    }
+                    update(deltaTime) {
+                        if (!this.exploded) {
+                            const ds = deltaTime / 1000;
+                            this.y -= this.speed * ds;
+                            if (this.y <= this.targetY) { this.explode(); return false; }
+                            return true;
+                        }
+                        return false;
+                    }
+                    explode() {
+                        this.exploded = true;
+                        this.explosionCount++;
+                        this.createExplosion(this.x, this.y, this.explosionPower * (isMobile ? 1.0 : 1.2), this.explosionPattern);
+                        if (this.explosionCount < this.maxExplosions) {
+                            setTimeout(() => { this.createSubsequentExplosion(); }, isMobile ? random(150, 400) : random(120, 350));
+                        }
+                    }
+                    createSubsequentExplosion() {
+                        this.explosionCount++;
+                        const distance = random(70, 185);
+                        const angle = random(0, Math.PI * 2);
+                        const newX = this.x + Math.cos(angle) * distance;
+                        const newY = this.y + Math.sin(angle) * distance;
+                        this.createExplosion(newX, newY, this.explosionPower * (isMobile ? random(0.5, 0.8) : random(0.6, 0.9)), this.explosionPattern);
+                        if (this.explosionCount < this.maxExplosions) {
+                            setTimeout(() => { this.createSubsequentExplosion(); }, isMobile ? random(150, 400) : random(120, 350));
+                        }
+                    }
+                    createExplosion(x, y, power, pattern) {
+                        if (pattern === EXPLOSION_PATTERNS.HEART) { heartExplosions.push(new HeartExplosionManager(x, y, this.colorConfig, power)); return; }
+                        if (pattern === EXPLOSION_PATTERNS.METEOR_SHOWER) {
+                            const mc = Math.floor((isMobile ? randomInt(6, 12) : randomInt(9, 16)) * particleMultiplier);
+                            for (let i = 0; i < mc; i++) { const m = new Meteor(x + random(-32, 32), y + random(-32, 32), this.colorConfig);
+                                m.speed *= power;
+                                particles.push(m); }
+                            return;
+                        }
+                        if (pattern === EXPLOSION_PATTERNS.FIRE_TREE) {
+                            const tc = Math.floor((isMobile ? randomInt(30, 50) : randomInt(45, 75)) * particleMultiplier);
+                            for (let i = 0; i < tc; i++) { const ft = new FireTreeParticle(x + random(-22, 22), y + random(-22, 22), this.colorConfig);
+                                ft.baseSize *= power * 0.85;
+                                ft.fallSpeed *= power;
+                                particles.push(ft); }
+                            return;
+                        }
+                        if (pattern === EXPLOSION_PATTERNS.CHRYSANTHEMUM) {
+                            const cc = Math.floor((isMobile ? randomInt(70, 110) : randomInt(110, 170)) * particleMultiplier);
+                            for (let i = 0; i < cc; i++) particles.push(new ChrysanthemumParticle(x, y, this.colorConfig, power));
+                            return;
+                        }
+                        const pc = Math.floor(randomInt(65, 130) * particleMultiplier);
+                        for (let i = 0; i < pc; i++) particles.push(new Particle(x, y, this.colorConfig, power, pattern));
+                    }
+                    draw(ctx) {
+                        if (!this.exploded) {
+                            const ly = this.y + this.lineLength;
+                            if (ly < canvas.height) {
+                                ctx.strokeStyle = 'hsla(60, 100%, 82%, 0.55)';
+                                ctx.lineWidth = 1.1;
+                                ctx.beginPath();
+                                ctx.moveTo(this.x, ly);
+                                ctx.lineTo(this.x, this.y);
+                                ctx.stroke();
+                            }
+                            ctx.fillStyle = 'hsla(60, 100%, 87%, 0.85)';
+                            ctx.beginPath();
+                            ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    }
+                }
+
+                function createRandomFirework() {
+                    if (Math.random() < 0.22) return;
+                    fireworks.push(new Firework(random(50, canvas.width - 50), random(canvas.height * 0.2, canvas.height * EXPLOSION_HEIGHT_RATIO), getRandomColorConfig()));
+                }
+
+                function createSpecialFirework() {
+                    if (isMobile && Math.random() < 0.7) return;
+                    if (!isMobile && Math.random() < 0.5) return;
+                    const sf = new Firework(random(100, canvas.width - 100), random(canvas.height * 0.15, canvas.height * 0.32), getRandomColorConfig());
+                    sf.explosionPower *= isMobile ? 1.2 : 1.45;
+                    sf.maxExplosions = isMobile ? randomInt(3, 5) : randomInt(4, 8);
+                    fireworks.push(sf);
+                }
+
+                function startAutoFire() {
+                    if (isAutoFiring) return;
+                    isAutoFiring = true;
+                    setTimeout(() => createRandomFirework(), 300);
+                    setTimeout(() => createRandomFirework(), 600);
+                    if (!isMobile || Math.random() > 0.5) setTimeout(() => createSpecialFirework(), 900);
+                    setTimeout(() => createRandomFirework(), 1200);
+                    setTimeout(() => createRandomFirework(), 1500);
+                    autoFireInterval = setInterval(() => {
+                        const now = Date.now();
+                        if (now - lastFireworkTime > (isMobile ? 1100 : 900)) {
+                            const count = isMobile ? (Math.random() > 0.6 ? 2 : 1) : (Math.random() > 0.3 ? 3 : (Math.random() > 0.5 ? 2 : 1));
+                            for (let i = 0; i < count; i++) {
+                                setTimeout(() => {
+                                    if (isMobile) { Math.random() > 0.8 ? createSpecialFirework() : createRandomFirework(); } else { Math.random() > 0.6 ? createSpecialFirework() : createRandomFirework(); }
+                                }, i * (isMobile ? 150 : 120));
+                            }
+                            lastFireworkTime = now;
+                        }
+                    }, isMobile ? 1100 : 900);
+                }
+
+                function animate(currentTime) {
+                    const dt = currentTime - lastTime || 0;
+                    lastTime = currentTime;
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.11)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                    for (let i = fireworks.length - 1; i >= 0; i--) { if (!fireworks[i].update(dt)) fireworks.splice(i, 1); else fireworks[i].draw(ctx); }
+                    for (let i = heartExplosions.length - 1; i >= 0; i--) { if (!heartExplosions[i].update(dt)) heartExplosions.splice(i, 1); else heartExplosions[i].draw(ctx); }
+                    for (let i = particles.length - 1; i >= 0; i--) { if (!particles[i].update(dt)) particles.splice(i, 1); else particles[i].draw(ctx); }
+                    for (let i = textParticles.length - 1; i >= 0; i--) { if (!textParticles[i].update(dt)) textParticles.splice(i, 1); else textParticles[i].draw(ctx); }
+
+                    const maxP = isMobile ? 1500 : 2200;
+                    if (particles.length > maxP) particles.splice(0, particles.length - (isMobile ? 1300 : 1900));
+                    if (textParticles.length > 400) textParticles.splice(0, textParticles.length - 350);
+                    if (fireworks.length > (isMobile ? 8 : 12)) fireworks.splice(0, fireworks.length - (isMobile ? 6 : 10));
+                    if (heartExplosions.length > (isMobile ? 3 : 4)) heartExplosions.splice(0, heartExplosions.length - (isMobile ? 2 : 3));
+
+                    fireworksAnimationId = requestAnimationFrame(animate);
+                }
+
+                let isPageVisible = true;
+                document.addEventListener('visibilitychange', function() {
+                    isPageVisible = !document.hidden;
+                    if (!isPageVisible) {
+                        if (fireworksAnimationId) { cancelAnimationFrame(fireworksAnimationId);
+                            fireworksAnimationId = null; }
+                        if (bgMusic) bgMusic.pause();
+                    } else {
+                        if (!fireworksAnimationId) { lastTime = performance.now();
+                            animate(lastTime); }
+                        if (bgMusic.paused && musicPlayed) bgMusic.play().catch(() => {});
+                    }
+                });
+
+                lastTime = performance.now();
+                animate(lastTime);
+                startAutoFire();
+
+                return {
+                    launchText: launchTextFirework,
+                    stop: function() {
+                        if (fireworksAnimationId) cancelAnimationFrame(fireworksAnimationId);
+                        if (autoFireInterval) clearInterval(autoFireInterval);
+                        isAutoFiring = false;
+                        fireworks = [];
+                        particles = [];
+                        heartExplosions = [];
+                        textParticles = [];
+                    }
+                };
+            }
 
             function init() {
-                if(EMAILJS_PUBLIC_KEY !== "YOUR_PUBLIC_KEY") emailjs.init(EMAILJS_PUBLIC_KEY);
-                generateMatrix();
-                renderMatrix();
-                videoOverlay.style.display = 'none';
-                statusDiv.textContent = '';
-                dynamicHint.textContent = '';
+                currentName = getUrlParameter();
+                preloadMusic();
+                fireworksSystem = initFireworksSystem();
+                setTimeout(() => { playBackgroundMusic(); }, 500);
+                showNewYearGreeting();
             }
+
+            document.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
+            window.addEventListener('load', function() { try { bgMusic.load(); } catch (error) {} });
             init();
-        })();
+        });
     </script>
 </body>
 </html>
