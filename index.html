@@ -65,7 +65,7 @@
             pointer-events: none;
         }
 
-        /* ---------- 星空祝福文字层（文字烟花消失5秒后淡入） ---------- */
+        /* ---------- 星空祝福文字层 ---------- */
         .blessing {
             position: fixed;
             top: 50%;
@@ -135,16 +135,12 @@
             opacity: 0.85;
         }
 
-        @keyframes fadeInBlessing {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
         @keyframes gentleFloat {
             0%, 100% { transform: translate(-50%, -50%); }
             50% { transform: translate(-50%, -52%); }
         }
 
-        /* 装饰星点（可选，无干扰） */
+        /* 装饰星点 */
         .spark {
             position: fixed;
             width: 2px;
@@ -165,12 +161,12 @@
     <div id="page3" class="page">
         <canvas id="fireworksCanvas"></canvas>
         <div class="text-container"></div>
-        <audio id="bgMusic" loop>
+        <audio id="bgMusic" loop preload="auto" autoplay>
             <source src="https://music.163.com/song/media/outer/url?id=2624235389.mp3" type="audio/mpeg">
         </audio>
     </div>
 
-    <!-- 星空祝福文字（文字烟花消失5秒后浮现） -->
+    <!-- 星空祝福文字 -->
     <div class="blessing">
         <div class="line1">五月十日，孟夏初盈。</div>
         <div class="line2">欣逢吉诞，愿风禾尽起，万事清欢。</div>
@@ -205,61 +201,58 @@
                 return '朋友';
             }
 
-            function playBackgroundMusic() {
+            // ---- 音乐：页面打开自动播放，无需交互 ----
+            function tryAutoPlay() {
                 if (musicPlayed) return;
-                try {
-                    bgMusic.volume = 0.3;
-                    bgMusic.currentTime = 0;
-                    const playPromise = bgMusic.play();
-                    if (playPromise !== undefined) {
-                        playPromise.then(() => { musicPlayed = true; }).catch(() => {
-                            const playOnClick = function() {
-                                bgMusic.play().then(() => { musicPlayed = true;
-                                    document.removeEventListener('click', playOnClick);
-                                    document.removeEventListener('touchstart', playOnClick); }).catch(() => {});
-                            };
-                            document.addEventListener('click', playOnClick);
-                            document.addEventListener('touchstart', playOnClick);
-                        });
-                    }
-                } catch (error) {}
+                bgMusic.volume = 0.3;
+                bgMusic.currentTime = 0;
+                bgMusic.play().then(function() {
+                    musicPlayed = true;
+                }).catch(function() {
+                    // 被浏览器拦截，持续重试自动播放
+                    var retryInterval = setInterval(function() {
+                        if (musicPlayed) { clearInterval(retryInterval); return; }
+                        bgMusic.play().then(function() {
+                            musicPlayed = true;
+                            clearInterval(retryInterval);
+                        }).catch(function() {});
+                    }, 500);
+                });
             }
 
             function preloadMusic() { try { bgMusic.load(); } catch (error) {} }
 
             function showNewYearGreeting() {
                 if (fireworksSystem && fireworksSystem.launchText) {
-                    const cx = window.innerWidth / 2;
-                    const cy1 = window.innerHeight * 0.38;
-                    const cy2 = window.innerHeight * 0.55;
-                    fireworksSystem.launchText('四天前的你', cx, cy1, 800);
-                    setTimeout(() => {
-                        if (fireworksSystem && fireworksSystem.launchText) {
-                            fireworksSystem.launchText('生日快乐！', cx, cy2, 1500, 110, 160);
+                    var cx = window.innerWidth / 2;
+                    var cy1 = window.innerHeight * 0.38;
+                    var cy2 = window.innerHeight * 0.55;
+                    // 第一行文字：逐字出现
+                    fireworksSystem.launchTextSequential('四天前的你', cx, cy1, 0, 90, 130);
+                    // 第二行文字：1.8秒后逐字出现
+                    setTimeout(function() {
+                        if (fireworksSystem && fireworksSystem.launchTextSequential) {
+                            fireworksSystem.launchTextSequential('生日快乐！', cx, cy2, 0, 110, 160);
                         }
-                    }, 1500);
-                    // 文字烟花消失后5秒，显示祝福文字
-                    setTimeout(() => {
+                    }, 1800);
+                    // 文字完全消失后5秒，显示祝福
+                    setTimeout(function() {
                         var blessing = document.querySelector('.blessing');
                         if (blessing) {
                             blessing.classList.add('visible');
-                            setTimeout(() => { blessing.classList.add('floating'); }, 2500);
+                            setTimeout(function() { blessing.classList.add('floating'); }, 2500);
                         }
-                    }, 12000);
+                    }, 17500);
                 }
             }
 
             // --- 性能优化 ---
-            // swap-and-pop: O(1) 删除
             function removeAtSwap(arr, i) {
-                const last = arr.length - 1;
+                var last = arr.length - 1;
                 if (i < last) arr[i] = arr[last];
                 arr.pop();
             }
 
-            // HSL → RGB 预计算缓存，避免运行时 hsla 字符串拼接
-            // 输入 h(0-360) s(0-100) l(0-100)，输出 "rgb(r,g,b,"
-            // 注意返回值末尾无闭合括号，调用方拼接 alpha 和 ")"
             var _hslCache = new Map();
             function hslToRgbPrefix(h, s, l) {
                 var key = (h << 16) | (s << 8) | l;
@@ -282,13 +275,13 @@
             }
 
             function initFireworksSystem() {
-                const ctx = canvas.getContext('2d', { alpha: true });
+                var ctx = canvas.getContext('2d', { alpha: true });
                 function resizeCanvas() {
                     canvas.width = window.innerWidth;
                     canvas.height = window.innerHeight;
                 }
                 resizeCanvas();
-                let resizeTimeout;
+                var resizeTimeout;
                 window.addEventListener('resize', function() {
                     clearTimeout(resizeTimeout);
                     resizeTimeout = setTimeout(resizeCanvas, 100);
@@ -300,22 +293,18 @@
                 var textParticles = [];
                 var lastFireworkTime = 0;
 
-                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
-                const particleMultiplier = isMobile ? 0.55 : 0.85;
+                var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
+                var particleMultiplier = isMobile ? 0.55 : 0.85;
                 var lastTime = 0;
-
-                // 缓存帧时间戳
                 var frameNow = Date.now();
 
-                const GRAVITY = 0.15;
-                const EXPLOSION_HEIGHT_RATIO = 0.55;
-                const WIND = 0.018;
-                const AIR_RESISTANCE = 0.97;
-                // 关键优化：Math.pow(AIR_RESISTANCE, ds*60) 是最热的路径
-                // 等价于 Math.exp(ln(0.97)*60*ds) = Math.exp(-1.82755*ds)
-                const AIR_RES_EXP_CONST = Math.log(AIR_RESISTANCE) * 60; // ≈ -1.82755
+                var GRAVITY = 0.15;
+                var EXPLOSION_HEIGHT_RATIO = 0.55;
+                var WIND = 0.018;
+                var AIR_RESISTANCE = 0.97;
+                var AIR_RES_EXP_CONST = Math.log(AIR_RESISTANCE) * 60;
 
-                const COLOR_PRESETS = [
+                var COLOR_PRESETS = [
                     { hue: 0, saturation: 100, lightness: 75, type: 'single' },
                     { hue: 30, saturation: 100, lightness: 75, type: 'single' },
                     { hue: 60, saturation: 100, lightness: 75, type: 'single' },
@@ -343,7 +332,7 @@
                     { hue: 330, saturation: 100, lightness: 70, type: 'chrysanthemum' },
                 ];
 
-                const EXPLOSION_PATTERNS = {
+                var EXPLOSION_PATTERNS = {
                     CIRCLE: 'circle', SPARKLE: 'sparkle', VORTEX: 'vortex', RAINBOW: 'rainbow',
                     RING: 'ring', SUN: 'sun', BURST: 'burst', CASCADE: 'cascade',
                     HEART: 'heart', METEOR_SHOWER: 'meteor_shower', FIRE_TREE: 'fire_tree',
@@ -352,31 +341,31 @@
                     PARAMETRIC_STAR: 'parametric_star', SPIRAL_PARAMETRIC: 'spiral_parametric'
                 };
 
-                const random = (min, max) => Math.random() * (max - min) + min;
-                const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+                var random = function(min, max) { return Math.random() * (max - min) + min; };
+                var randomInt = function(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; };
 
-                // 预构建加权图案数组（只构建一次）
-                const weightedPatterns = (function() {
-                    const wp = [];
-                    const normalPatterns = [
+                // 预构建加权图案数组
+                var weightedPatterns = (function() {
+                    var wp = [];
+                    var normalPatterns = [
                         EXPLOSION_PATTERNS.CIRCLE, EXPLOSION_PATTERNS.SPARKLE,
                         EXPLOSION_PATTERNS.VORTEX, EXPLOSION_PATTERNS.RAINBOW,
                         EXPLOSION_PATTERNS.RING, EXPLOSION_PATTERNS.SUN,
                         EXPLOSION_PATTERNS.BURST, EXPLOSION_PATTERNS.CASCADE
                     ];
-                    const counts = [6, 6, 6, 6, 6, 5, 5, 5];
-                    for (let i = 0; i < normalPatterns.length; i++) {
-                        for (let j = 0; j < counts[i]; j++) wp.push(normalPatterns[i]);
+                    var counts = [6, 6, 6, 6, 6, 5, 5, 5];
+                    for (var i = 0; i < normalPatterns.length; i++) {
+                        for (var j = 0; j < counts[i]; j++) wp.push(normalPatterns[i]);
                     }
-                    for (let i = 0; i < 54; i++) wp.push(EXPLOSION_PATTERNS.PARAMETRIC_CIRCLE);
-                    for (let i = 0; i < 18; i++) wp.push(EXPLOSION_PATTERNS.PARAMETRIC_ELLIPSE);
-                    for (let i = 0; i < 14; i++) wp.push(EXPLOSION_PATTERNS.PARAMETRIC_STAR);
-                    for (let i = 0; i < 4; i++) wp.push(EXPLOSION_PATTERNS.SPIRAL_PARAMETRIC);
-                    for (let i = 0; i < 27; i++) wp.push(EXPLOSION_PATTERNS.HEART);
-                    for (let i = 0; i < 18; i++) wp.push(EXPLOSION_PATTERNS.METEOR_SHOWER);
-                    for (let i = 0; i < 11; i++) wp.push(EXPLOSION_PATTERNS.FIRE_TREE);
-                    for (let i = 0; i < 7; i++) wp.push(EXPLOSION_PATTERNS.ELLIPSE);
-                    for (let i = 0; i < 27; i++) wp.push(EXPLOSION_PATTERNS.CHRYSANTHEMUM);
+                    for (var i = 0; i < 54; i++) wp.push(EXPLOSION_PATTERNS.PARAMETRIC_CIRCLE);
+                    for (var i = 0; i < 18; i++) wp.push(EXPLOSION_PATTERNS.PARAMETRIC_ELLIPSE);
+                    for (var i = 0; i < 14; i++) wp.push(EXPLOSION_PATTERNS.PARAMETRIC_STAR);
+                    for (var i = 0; i < 4; i++) wp.push(EXPLOSION_PATTERNS.SPIRAL_PARAMETRIC);
+                    for (var i = 0; i < 27; i++) wp.push(EXPLOSION_PATTERNS.HEART);
+                    for (var i = 0; i < 18; i++) wp.push(EXPLOSION_PATTERNS.METEOR_SHOWER);
+                    for (var i = 0; i < 11; i++) wp.push(EXPLOSION_PATTERNS.FIRE_TREE);
+                    for (var i = 0; i < 7; i++) wp.push(EXPLOSION_PATTERNS.ELLIPSE);
+                    for (var i = 0; i < 27; i++) wp.push(EXPLOSION_PATTERNS.CHRYSANTHEMUM);
                     return wp;
                 })();
 
@@ -386,72 +375,109 @@
 
                 function getRandomColorConfig(pattern) {
                     if (pattern === EXPLOSION_PATTERNS.CHRYSANTHEMUM) {
-                        const cc = COLOR_PRESETS.filter(c => c.type === 'chrysanthemum');
+                        var cc = COLOR_PRESETS.filter(function(c) { return c.type === 'chrysanthemum'; });
                         return cc[randomInt(0, cc.length - 1)];
                     }
-                    const c1 = COLOR_PRESETS[randomInt(0, COLOR_PRESETS.length - 1)];
+                    var c1 = COLOR_PRESETS[randomInt(0, COLOR_PRESETS.length - 1)];
                     if (Math.random() < 0.3) {
-                        const c2 = COLOR_PRESETS[randomInt(0, COLOR_PRESETS.length - 1)];
+                        var c2 = COLOR_PRESETS[randomInt(0, COLOR_PRESETS.length - 1)];
                         return { hue: c1.hue, saturation: c1.saturation, lightness: c1.lightness, type: 'dual', secondHue: c2.hue, secondSaturation: c2.saturation, secondLightness: c2.lightness };
                     }
                     return c1;
                 }
 
-                // 文字粒子类
+                // ============ 文字粒子（两种模式） ============
+                var TextParticleMode = { SEQUENTIAL: 1, SCATTER: 2 };
+
                 class TextParticle {
-                    constructor(char, x, y, hue, startDecayDelay, fontSize) {
+                    constructor(char, x, y, hue, opts) {
                         this.char = char;
                         this.x = x;
                         this.y = y;
                         this.hue = hue;
                         this.life = 1.0;
-                        this.decayRate = random(0.12, 0.22);
-                        this.startDecayDelay = startDecayDelay || 0;
                         this.age = 0;
-                        const angle = random(0, Math.PI * 2);
-                        const speed = random(160, 380);
-                        this.vx = Math.cos(angle) * speed;
-                        this.vy = Math.sin(angle) * speed - random(50, 160);
-                        this.fontSize = fontSize || random(70, 110);
+                        this.fontSize = (opts && opts.fontSize) || random(70, 110);
                         this.rotSpeed = random(-0.3, 0.3);
                         this.rotation = 0;
                         this.wobble = random(0, Math.PI * 2);
                         this._fontStr = 'bold ' + this.fontSize + 'px "Ma Shan Zheng",cursive,sans-serif';
                         this._glowFontStr = 'bold ' + (this.fontSize + 6) + 'px "Ma Shan Zheng",cursive,sans-serif';
-                        // 预计算 rgb 前缀
                         this._glowRgb = hslToRgbPrefix(hue, 100, 85);
                         this._mainRgb = hslToRgbPrefix(hue, 100, 70);
+
+                        this.mode = (opts && opts.mode) || TextParticleMode.SCATTER;
+                        this.startDecayDelay = (opts && opts.startDecayDelay) || 0;
+                        this.appearDelay = (opts && opts.appearDelay) || 0;
+                        this.appeared = false;
+
+                        if (this.mode === TextParticleMode.SEQUENTIAL) {
+                            this.vx = random(-5, 5);
+                            this.vy = random(-8, -2);
+                            this.decayRate = random(0.18, 0.22);
+                            this.targetX = x;
+                            this.targetY = y;
+                            this.currentAlpha = 0;
+                            this.fadeInSpeed = random(0.8, 1.2);
+                        } else {
+                            var angle = random(0, Math.PI * 2);
+                            var speed = random(160, 380);
+                            this.vx = Math.cos(angle) * speed;
+                            this.vy = Math.sin(angle) * speed - random(50, 160);
+                            this.decayRate = random(0.12, 0.22);
+                            this.currentAlpha = 1.0;
+                        }
                     }
                     update(dt) {
-                        const ds = dt / 1000;
+                        var ds = dt / 1000;
                         this.age += dt;
-                        this.x += this.vx * ds;
-                        this.y += this.vy * ds;
-                        this.vy += GRAVITY * 0.5 * ds;
-                        this.vx += WIND * random(-0.025, 0.025) * ds;
-                        // 用 Math.exp 替代 Math.pow（关键热路径优化）
-                        var airDamp = Math.exp(AIR_RES_EXP_CONST * ds);
-                        this.vx *= airDamp;
-                        this.vy *= airDamp;
-                        if (this.age >= this.startDecayDelay) {
-                            this.life -= this.decayRate * ds;
+
+                        if (this.age < this.appearDelay) return true;
+                        if (!this.appeared) this.appeared = true;
+
+                        if (this.mode === TextParticleMode.SEQUENTIAL) {
+                            this.x += this.vx * ds;
+                            this.y += this.vy * ds;
+                            this.vy += GRAVITY * 0.03 * ds;
+                            if (this.currentAlpha < 1.0) {
+                                this.currentAlpha += this.fadeInSpeed * ds;
+                                if (this.currentAlpha > 1.0) this.currentAlpha = 1.0;
+                            }
+                            if (this.age - this.appearDelay >= this.startDecayDelay) {
+                                this.life -= this.decayRate * ds;
+                                this.currentAlpha = Math.max(0, this.life);
+                            }
+                            this.rotation += this.rotSpeed * ds * 0.15;
+                            this.wobble += ds * 1.5;
+                        } else {
+                            this.x += this.vx * ds;
+                            this.y += this.vy * ds;
+                            this.vy += GRAVITY * 0.5 * ds;
+                            this.vx += WIND * random(-0.025, 0.025) * ds;
+                            var airDamp = Math.exp(AIR_RES_EXP_CONST * ds);
+                            this.vx *= airDamp;
+                            this.vy *= airDamp;
+                            if (this.age >= this.startDecayDelay) {
+                                this.life -= this.decayRate * ds;
+                            }
+                            this.currentAlpha = this.life;
+                            this.rotation += this.rotSpeed * ds;
+                            this.wobble += ds * 3;
                         }
-                        this.rotation += this.rotSpeed * ds;
-                        this.wobble += ds * 3;
+
                         return this.life > 0 && this.y < canvas.height + 80;
                     }
                     draw(ctx) {
-                        var alpha = this.life;
-                        if (alpha <= 0) return;
-                        var rot = this.rotation + Math.sin(this.wobble) * 0.1;
+                        var alpha = this.currentAlpha;
+                        if (alpha <= 0.01) return;
+                        if (!this.appeared) return;
+                        var rot = this.rotation + Math.sin(this.wobble) * (this.mode === TextParticleMode.SEQUENTIAL ? 0.03 : 0.1);
                         ctx.save();
                         ctx.translate(this.x, this.y);
                         ctx.rotate(rot);
-                        // 发光层
                         ctx.font = this._glowFontStr;
                         ctx.fillStyle = this._glowRgb + (alpha * 0.25) + ')';
                         ctx.fillText(this.char, -(this.fontSize + 6) / 2, (this.fontSize + 6) / 2);
-                        // 主字层
                         ctx.font = this._fontStr;
                         ctx.fillStyle = this._mainRgb + alpha + ')';
                         ctx.fillText(this.char, -this.fontSize / 2, this.fontSize / 2);
@@ -459,22 +485,71 @@
                     }
                 }
 
+                // 逐字顺序排列出现
+                function launchTextSequential(text, cx, cy, startDecayDelay, fontSizeMin, fontSizeMax) {
+                    startDecayDelay = startDecayDelay || 0;
+                    fontSizeMin = fontSizeMin || 90;
+                    fontSizeMax = fontSizeMax || 130;
+                    var brightHues = [0, 20, 40, 55, 120, 180, 200, 260, 290, 320, 10, 340];
+                    var chars = text.split('');
+                    var charSpacing = fontSizeMin * 1.15;
+                    var totalWidth = (chars.length - 1) * charSpacing;
+                    var startX = cx - totalWidth / 2;
+
+                    for (var i = 0; i < chars.length; i++) {
+                        var hue = brightHues[randomInt(0, brightHues.length - 1)];
+                        var fontSize = random(fontSizeMin, fontSizeMax);
+                        var charX = startX + i * charSpacing;
+                        var charY = cy + random(-8, 8);
+                        var appearDelay = i * 280;
+                        var opts = {
+                            mode: TextParticleMode.SEQUENTIAL,
+                            startDecayDelay: startDecayDelay + 4000,
+                            appearDelay: appearDelay,
+                            fontSize: fontSize
+                        };
+                        textParticles.push(new TextParticle(chars[i], charX, charY, hue, opts));
+                    }
+
+                    // 出现时的闪烁粒子
+                    for (var i = 0; i < chars.length; i++) {
+                        (function(idx) {
+                            setTimeout(function() {
+                                var px = startX + idx * charSpacing;
+                                for (var j = 0; j < 12; j++) {
+                                    var hue = brightHues[randomInt(0, brightHues.length - 1)];
+                                    var p = new Particle(px + random(-15, 15), cy + random(-15, 15), { hue: hue, saturation: 100, lightness: 80, type: 'single' }, 0.35);
+                                    p.baseSize = random(0.5, 1.8);
+                                    p.decayRate = random(0.3, 0.6);
+                                    particles.push(p);
+                                }
+                            }, idx * 280 + 100);
+                        })(i);
+                    }
+                }
+
+                // 随机散开出现（保留原方式）
                 function launchTextFirework(text, cx, cy, startDecayDelay, fontSizeMin, fontSizeMax) {
                     startDecayDelay = startDecayDelay || 0;
                     fontSizeMin = fontSizeMin || 70;
                     fontSizeMax = fontSizeMax || 110;
-                    const brightHues = [0, 20, 40, 55, 120, 180, 200, 260, 290, 320, 10, 340];
-                    const chars = text.split('');
-                    for (let i = 0; i < chars.length; i++) {
-                        const hue = brightHues[randomInt(0, brightHues.length - 1)];
-                        const ox = random(-25, 25);
-                        const oy = random(-25, 25);
-                        const fontSize = random(fontSizeMin, fontSizeMax);
-                        textParticles.push(new TextParticle(chars[i], cx + ox, cy + oy, hue, startDecayDelay, fontSize));
+                    var brightHues = [0, 20, 40, 55, 120, 180, 200, 260, 290, 320, 10, 340];
+                    var chars = text.split('');
+                    for (var i = 0; i < chars.length; i++) {
+                        var hue = brightHues[randomInt(0, brightHues.length - 1)];
+                        var ox = random(-25, 25);
+                        var oy = random(-25, 25);
+                        var fontSize = random(fontSizeMin, fontSizeMax);
+                        var opts = {
+                            mode: TextParticleMode.SCATTER,
+                            startDecayDelay: startDecayDelay,
+                            fontSize: fontSize
+                        };
+                        textParticles.push(new TextParticle(chars[i], cx + ox, cy + oy, hue, opts));
                     }
-                    for (let i = 0; i < 35; i++) {
-                        const hue = brightHues[randomInt(0, brightHues.length - 1)];
-                        const p = new Particle(cx + random(-25, 25), cy + random(-25, 25), { hue: hue, saturation: 100, lightness: 72, type: 'single' }, 0.55);
+                    for (var i = 0; i < 35; i++) {
+                        var hue = brightHues[randomInt(0, brightHues.length - 1)];
+                        var p = new Particle(cx + random(-25, 25), cy + random(-25, 25), { hue: hue, saturation: 100, lightness: 72, type: 'single' }, 0.55);
                         p.size = random(0.8, 2.8);
                         p.decayRate = random(0.16, 0.38);
                         particles.push(p);
@@ -493,24 +568,24 @@
                         this.createHeartParticles();
                     }
                     createHeartParticles() {
-                        const baseCount = isMobile ? randomInt(60, 90) : randomInt(90, 140);
-                        const particleCount = Math.floor(baseCount * particleMultiplier);
-                        for (let i = 0; i < particleCount; i++) {
-                            const t = (i / particleCount) * Math.PI * 2;
+                        var baseCount = isMobile ? randomInt(60, 90) : randomInt(90, 140);
+                        var particleCount = Math.floor(baseCount * particleMultiplier);
+                        for (var i = 0; i < particleCount; i++) {
+                            var t = (i / particleCount) * Math.PI * 2;
                             this.heartParticles.push(new SimplifiedHeartParticle(this.x, this.y, this.colorConfig, this.explosionPower, t));
                         }
                     }
                     update(deltaTime) {
-                        const elapsed = frameNow - this.createdAt;
-                        const hp = this.heartParticles;
-                        for (let i = hp.length - 1; i >= 0; i--) {
+                        var elapsed = frameNow - this.createdAt;
+                        var hp = this.heartParticles;
+                        for (var i = hp.length - 1; i >= 0; i--) {
                             hp[i].update(deltaTime, elapsed);
                         }
                         return elapsed < this.lifetime;
                     }
                     draw(ctx) {
-                        const hp = this.heartParticles;
-                        for (let i = 0, len = hp.length; i < len; i++) hp[i].draw(ctx);
+                        var hp = this.heartParticles;
+                        for (var i = 0, len = hp.length; i < len; i++) hp[i].draw(ctx);
                     }
                 }
 
@@ -529,7 +604,6 @@
                         this.twinkleAmount = random(0.1, 0.2);
                         this.x = x;
                         this.y = y;
-                        // 预计算颜色前缀（dual 选主色）
                         var hue = colorConfig.hue, sat = colorConfig.saturation, lit = colorConfig.lightness;
                         this._rgb = hslToRgbPrefix(hue, sat, lit);
                         this._dualRgb = colorConfig.type === 'dual' ? hslToRgbPrefix(colorConfig.secondHue || hue, colorConfig.secondSaturation || sat, colorConfig.secondLightness || lit) : null;
@@ -558,11 +632,9 @@
                     }
                     draw(ctx) {
                         var alpha = this.life * 0.9;
-                        // dual 颜色在构造时决定，不再每帧 Math.random
                         var rgb = this._dualRgb && Math.random() > 0.5 ? this._dualRgb : this._rgb;
                         ctx.fillStyle = rgb + alpha + ')';
                         var s = this.currentSize;
-                        // 小粒子用 fillRect
                         if (s < 2) {
                             ctx.fillRect(this.x - s, this.y - s, s * 2, s * 2);
                         } else {
@@ -573,7 +645,6 @@
                     }
                 }
 
-                // --- 流星粒子 ---
                 class Meteor {
                     constructor(x, y, colorConfig) {
                         this.x = x;
@@ -586,20 +657,17 @@
                         this.decayRate = random(0.2, 0.4);
                         this.baseSize = random(1.5, 3);
                         this.currentSize = this.baseSize;
-                        // 环形缓冲区替代 push/shift
                         this.trailX = new Float32Array(isMobile ? 6 : 10);
                         this.trailY = new Float32Array(isMobile ? 6 : 10);
                         this.trailS = new Float32Array(isMobile ? 6 : 10);
                         this.trailLen = 0;
                         this.trailMax = isMobile ? 6 : 10;
                         this.trailHead = 0;
-                        // 预计算颜色
                         this._rgb = hslToRgbPrefix(colorConfig.hue, colorConfig.saturation, colorConfig.lightness);
                         this._rgbBright = hslToRgbPrefix(colorConfig.hue, colorConfig.saturation, Math.min(colorConfig.lightness + 15, 100));
                     }
                     update(deltaTime) {
                         var ds = deltaTime / 1000;
-                        // 环形缓冲区写尾迹
                         if (this.trailLen < this.trailMax) {
                             this.trailX[this.trailLen] = this.x;
                             this.trailY[this.trailLen] = this.y;
@@ -620,7 +688,6 @@
                     }
                     draw(ctx) {
                         var alpha = Math.max(0, this.life);
-                        // 尾迹
                         for (var i = 0; i < this.trailLen; i++) {
                             var ratio = i / this.trailLen;
                             var ta = alpha * ratio * 0.5;
@@ -628,14 +695,12 @@
                             var ts = this.trailS[i] * ratio;
                             ctx.fillRect(this.trailX[i] - ts, this.trailY[i] - ts, ts * 2, ts * 2);
                         }
-                        // 头部
                         ctx.fillStyle = this._rgb + alpha + ')';
                         var cs = this.currentSize;
                         ctx.fillRect(this.x - cs, this.y - cs, cs * 2, cs * 2);
                     }
                 }
 
-                // --- 火树粒子 ---
                 class FireTreeParticle {
                     constructor(x, y, colorConfig) {
                         this.x = x;
@@ -659,7 +724,6 @@
                         this.vx *= Math.exp(AIR_RES_EXP_CONST * ds);
                         this.life -= this.decayRate * ds;
                         this.currentSize = this.baseSize * this.life;
-                        // 偶尔产生火花
                         this.sparkTimer += deltaTime;
                         if (this.sparkTimer > 80 && Math.random() < 0.3 && this.life > 0.3) {
                             this.sparkTimer = 0;
@@ -684,7 +748,6 @@
                     }
                 }
 
-                // --- 菊花粒子 ---
                 class ChrysanthemumParticle {
                     constructor(x, y, colorConfig, power) {
                         this.x = x;
@@ -697,7 +760,6 @@
                         this.decayRate = random(0.06, 0.14);
                         this.baseSize = random(1.2, 2.5);
                         this.currentSize = this.baseSize;
-                        // 环形缓冲区
                         this.trailX = new Float32Array(isMobile ? 8 : 14);
                         this.trailY = new Float32Array(isMobile ? 8 : 14);
                         this.trailLen = 0;
@@ -708,7 +770,6 @@
                     }
                     update(deltaTime) {
                         var ds = deltaTime / 1000;
-                        // 环形缓冲区写尾迹
                         if (this.trailLen < this.trailMax) {
                             this.trailX[this.trailLen] = this.x;
                             this.trailY[this.trailLen] = this.y;
@@ -730,7 +791,6 @@
                     }
                     draw(ctx) {
                         var alpha = Math.max(0, this.life);
-                        // 尾迹 - 用 fillRect 批量绘制
                         for (var i = 0; i < this.trailLen; i++) {
                             var ratio = i / this.trailLen;
                             var ta = alpha * ratio * 0.4;
@@ -738,7 +798,6 @@
                             var ts = this.currentSize * ratio;
                             ctx.fillRect(this.trailX[i] - ts, this.trailY[i] - ts, ts * 2, ts * 2);
                         }
-                        // 头部
                         ctx.fillStyle = this._rgb + alpha + ')';
                         var cs = this.currentSize;
                         ctx.fillRect(this.x - cs, this.y - cs, cs * 2, cs * 2);
@@ -768,9 +827,7 @@
                             this.vx += random(-35, 35);
                             this.vy += random(-35, 35);
                         }
-                        // 预计算颜色前缀
                         this._rgb = hslToRgbPrefix(colorConfig.hue, colorConfig.saturation, colorConfig.lightness);
-                        // 预计算火花颜色 (hsl 60, 100%, ~88%)
                         this._fireSparkRgb = hslToRgbPrefix(60, 100, 88);
                     }
                     update(deltaTime) {
@@ -779,7 +836,6 @@
                         this.y += this.vy * ds;
                         this.vy += GRAVITY * this.verticalWeight * ds;
                         this.vx += WIND * random(-0.016, 0.016) * ds;
-                        // Math.exp 替代 Math.pow（关键热路径）
                         var airDamp = Math.exp(AIR_RES_EXP_CONST * ds);
                         this.vx *= airDamp;
                         this.vy *= airDamp;
@@ -798,7 +854,6 @@
                             ctx.fillStyle = this._rgb + (alpha * 0.82) + ')';
                         }
                         var s = this.size;
-                        // 小粒子用 fillRect（比 arc 快 3-5 倍）
                         if (s < 2) {
                             ctx.fillRect(this.x - s, this.y - s, s * 2, s * 2);
                         } else {
@@ -905,26 +960,27 @@
                 function startAutoFire() {
                     if (isAutoFiring) return;
                     isAutoFiring = true;
-                    setTimeout(() => createRandomFirework(), 300);
-                    setTimeout(() => createRandomFirework(), 600);
-                    if (!isMobile || Math.random() > 0.5) setTimeout(() => createSpecialFirework(), 900);
-                    setTimeout(() => createRandomFirework(), 1200);
-                    setTimeout(() => createRandomFirework(), 1500);
-                    autoFireInterval = setInterval(() => {
+                    setTimeout(function() { createRandomFirework(); }, 300);
+                    setTimeout(function() { createRandomFirework(); }, 600);
+                    if (!isMobile || Math.random() > 0.5) setTimeout(function() { createSpecialFirework(); }, 900);
+                    setTimeout(function() { createRandomFirework(); }, 1200);
+                    setTimeout(function() { createRandomFirework(); }, 1500);
+                    autoFireInterval = setInterval(function() {
                         var now = Date.now();
                         if (now - lastFireworkTime > (isMobile ? 1100 : 900)) {
                             var count = isMobile ? (Math.random() > 0.6 ? 2 : 1) : (Math.random() > 0.3 ? 3 : (Math.random() > 0.5 ? 2 : 1));
                             for (var i = 0; i < count; i++) {
-                                setTimeout(() => {
-                                    if (isMobile) { Math.random() > 0.8 ? createSpecialFirework() : createRandomFirework(); } else { Math.random() > 0.6 ? createSpecialFirework() : createRandomFirework(); }
-                                }, i * (isMobile ? 150 : 120));
+                                (function(idx) {
+                                    setTimeout(function() {
+                                        if (isMobile) { Math.random() > 0.8 ? createSpecialFirework() : createRandomFirework(); } else { Math.random() > 0.6 ? createSpecialFirework() : createRandomFirework(); }
+                                    }, idx * (isMobile ? 150 : 120));
+                                })(i);
                             }
                             lastFireworkTime = now;
                         }
                     }, isMobile ? 1100 : 900);
                 }
 
-                // --- 动态帧率自适应 ---
                 var frameTimes = [];
 
                 function animate(currentTime) {
@@ -933,7 +989,6 @@
                     lastTime = currentTime;
                     frameNow = Date.now();
 
-                    // 帧率监控
                     frameTimes.push(rawDt);
                     if (frameTimes.length > 30) frameTimes.shift();
                     var avgFrame = 0;
@@ -962,7 +1017,6 @@
                     for (var i = 0, len = particles.length; i < len; i++) particles[i].draw(ctx);
                     for (var i = 0, len = textParticles.length; i < len; i++) textParticles[i].draw(ctx);
 
-                    // 粒子上限控制（自适应降级）
                     var maxP = needsDowngrade ? (isMobile ? 600 : 1000) : (isMobile ? 1000 : 1600);
                     if (particles.length > maxP) {
                         var excess = particles.length - (isMobile ? 500 : 800);
@@ -983,7 +1037,7 @@
                         if (bgMusic) bgMusic.pause();
                     } else {
                         if (!fireworksAnimationId) { lastTime = performance.now(); frameTimes.length = 0; animate(lastTime); }
-                        if (bgMusic.paused && musicPlayed) bgMusic.play().catch(() => {});
+                        if (bgMusic.paused && musicPlayed) bgMusic.play().catch(function() {});
                     }
                 });
 
@@ -993,6 +1047,7 @@
 
                 return {
                     launchText: launchTextFirework,
+                    launchTextSequential: launchTextSequential,
                     stop: function() {
                         if (fireworksAnimationId) cancelAnimationFrame(fireworksAnimationId);
                         if (autoFireInterval) clearInterval(autoFireInterval);
@@ -1006,7 +1061,7 @@
                 currentName = getUrlParameter();
                 preloadMusic();
                 fireworksSystem = initFireworksSystem();
-                setTimeout(() => { playBackgroundMusic(); }, 500);
+                tryAutoPlay();
                 showNewYearGreeting();
             }
 
