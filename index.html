@@ -65,6 +65,46 @@
             pointer-events: none;
         }
 
+        /* ---------- 点击进入遮罩 ---------- */
+        .entry-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 999;
+            background: radial-gradient(ellipse at center, #0a0a1a 0%, #000 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: opacity 0.8s ease-out;
+        }
+        .entry-overlay.hide {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .entry-text {
+            font-family: 'Ma Shan Zheng', cursive, sans-serif;
+            font-size: clamp(1.8rem, 6vw, 3rem);
+            color: #f5ecd7;
+            text-shadow: 0 0 20px rgba(255,220,150,0.5), 0 0 40px rgba(255,200,100,0.3);
+            letter-spacing: 0.3em;
+            animation: entryPulse 2s ease-in-out infinite;
+        }
+        .entry-sub {
+            font-family: 'Ma Shan Zheng', cursive, sans-serif;
+            font-size: clamp(0.9rem, 2.5vw, 1.2rem);
+            color: rgba(245,236,215,0.5);
+            margin-top: 1.5rem;
+            letter-spacing: 0.2em;
+        }
+        @keyframes entryPulse {
+            0%, 100% { opacity: 0.7; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.05); }
+        }
+
         /* ---------- 星空祝福文字层 ---------- */
         .blessing {
             position: fixed;
@@ -158,6 +198,12 @@
     </style>
 </head>
 <body>
+    <!-- 点击进入遮罩：解决微信/移动端无法自动播放音乐 -->
+    <div class="entry-overlay" id="entryOverlay">
+        <div class="entry-text">轻触进入</div>
+        <div class="entry-sub">愿此刻星光为你而亮</div>
+    </div>
+
     <div id="page3" class="page">
         <canvas id="fireworksCanvas"></canvas>
         <div class="text-container"></div>
@@ -201,23 +247,49 @@
                 return '朋友';
             }
 
-            // ---- 音乐：页面打开自动播放，无需交互 ----
-            function tryAutoPlay() {
+            // ---- 音乐：通过点击遮罩触发（兼容微信浏览器） ----
+            var entryOverlay = document.getElementById('entryOverlay');
+            var overlayDismissed = false;
+
+            function startMusic() {
                 if (musicPlayed) return;
                 bgMusic.volume = 0.3;
                 bgMusic.currentTime = 0;
                 bgMusic.play().then(function() {
                     musicPlayed = true;
-                }).catch(function() {
-                    // 被浏览器拦截，持续重试自动播放
-                    var retryInterval = setInterval(function() {
-                        if (musicPlayed) { clearInterval(retryInterval); return; }
-                        bgMusic.play().then(function() {
-                            musicPlayed = true;
-                            clearInterval(retryInterval);
-                        }).catch(function() {});
-                    }, 500);
-                });
+                }).catch(function() {});
+            }
+
+            function dismissOverlay() {
+                if (overlayDismissed) return;
+                overlayDismissed = true;
+                startMusic();
+                entryOverlay.classList.add('hide');
+                setTimeout(function() {
+                    if (entryOverlay.parentNode) entryOverlay.parentNode.removeChild(entryOverlay);
+                }, 1000);
+            }
+
+            // 遮罩点击/触摸 → 开始播放音乐 + 移除遮罩
+            entryOverlay.addEventListener('touchstart', dismissOverlay, { passive: true });
+            entryOverlay.addEventListener('click', dismissOverlay);
+
+            // 微信浏览器专用：WeixinJSBridgeReady 事件
+            if (typeof WeixinJSBridge !== 'undefined') {
+                WeixinJSBridge.invoke('getNetworkType', {}, function() { startMusic(); });
+            }
+            document.addEventListener('WeixinJSBridgeReady', function() {
+                startMusic();
+            }, false);
+
+            // 桌面浏览器：尝试自动播放，成功则自动隐藏遮罩
+            function tryAutoPlay() {
+                bgMusic.volume = 0.3;
+                bgMusic.currentTime = 0;
+                bgMusic.play().then(function() {
+                    musicPlayed = true;
+                    dismissOverlay();
+                }).catch(function() {});
             }
 
             function preloadMusic() { try { bgMusic.load(); } catch (error) {} }
@@ -227,15 +299,12 @@
                     var cx = window.innerWidth / 2;
                     var cy1 = window.innerHeight * 0.38;
                     var cy2 = window.innerHeight * 0.55;
-                    // 第一行文字：逐字出现
-                    fireworksSystem.launchTextSequential('四天前的你', cx, cy1, 0, 90, 130);
-                    // 第二行文字：1.8秒后逐字出现
+                    fireworksSystem.launchTextSequential('四天前的你', cx, cy1, 0);
                     setTimeout(function() {
                         if (fireworksSystem && fireworksSystem.launchTextSequential) {
-                            fireworksSystem.launchTextSequential('生日快乐！', cx, cy2, 0, 110, 160);
+                            fireworksSystem.launchTextSequential('生日快乐！', cx, cy2, 0);
                         }
                     }, 1800);
-                    // 文字完全消失后5秒，显示祝福
                     setTimeout(function() {
                         var blessing = document.querySelector('.blessing');
                         if (blessing) {
@@ -431,7 +500,6 @@
                     update(dt) {
                         var ds = dt / 1000;
                         this.age += dt;
-
                         if (this.age < this.appearDelay) return true;
                         if (!this.appeared) this.appeared = true;
 
@@ -488,12 +556,28 @@
                 // 逐字顺序排列出现
                 function launchTextSequential(text, cx, cy, startDecayDelay, fontSizeMin, fontSizeMax) {
                     startDecayDelay = startDecayDelay || 0;
-                    fontSizeMin = fontSizeMin || 90;
-                    fontSizeMax = fontSizeMax || 130;
+                    var sw = window.innerWidth;
+                    if (sw <= 375) {
+                        fontSizeMin = fontSizeMin || 48;
+                        fontSizeMax = fontSizeMax || 68;
+                    } else if (sw <= 480) {
+                        fontSizeMin = fontSizeMin || 58;
+                        fontSizeMax = fontSizeMax || 82;
+                    } else if (sw <= 768) {
+                        fontSizeMin = fontSizeMin || 72;
+                        fontSizeMax = fontSizeMax || 100;
+                    } else {
+                        fontSizeMin = fontSizeMin || 90;
+                        fontSizeMax = fontSizeMax || 130;
+                    }
                     var brightHues = [0, 20, 40, 55, 120, 180, 200, 260, 290, 320, 10, 340];
                     var chars = text.split('');
                     var charSpacing = fontSizeMin * 1.15;
                     var totalWidth = (chars.length - 1) * charSpacing;
+                    if (totalWidth > sw * 0.9) {
+                        charSpacing = (sw * 0.9) / (chars.length - 1);
+                        totalWidth = (chars.length - 1) * charSpacing;
+                    }
                     var startX = cx - totalWidth / 2;
 
                     for (var i = 0; i < chars.length; i++) {
@@ -511,12 +595,12 @@
                         textParticles.push(new TextParticle(chars[i], charX, charY, hue, opts));
                     }
 
-                    // 出现时的闪烁粒子
+                    var sparklePerChar = sw <= 480 ? 6 : 12;
                     for (var i = 0; i < chars.length; i++) {
                         (function(idx) {
                             setTimeout(function() {
                                 var px = startX + idx * charSpacing;
-                                for (var j = 0; j < 12; j++) {
+                                for (var j = 0; j < sparklePerChar; j++) {
                                     var hue = brightHues[randomInt(0, brightHues.length - 1)];
                                     var p = new Particle(px + random(-15, 15), cy + random(-15, 15), { hue: hue, saturation: 100, lightness: 80, type: 'single' }, 0.35);
                                     p.baseSize = random(0.5, 1.8);
@@ -528,7 +612,7 @@
                     }
                 }
 
-                // 随机散开出现（保留原方式）
+                // 随机散开出现
                 function launchTextFirework(text, cx, cy, startDecayDelay, fontSizeMin, fontSizeMax) {
                     startDecayDelay = startDecayDelay || 0;
                     fontSizeMin = fontSizeMin || 70;
@@ -558,13 +642,9 @@
 
                 class HeartExplosionManager {
                     constructor(x, y, colorConfig, explosionPower) {
-                        this.x = x;
-                        this.y = y;
-                        this.colorConfig = colorConfig;
-                        this.explosionPower = explosionPower;
-                        this.createdAt = frameNow;
-                        this.lifetime = 1500;
-                        this.heartParticles = [];
+                        this.x = x; this.y = y; this.colorConfig = colorConfig;
+                        this.explosionPower = explosionPower; this.createdAt = frameNow;
+                        this.lifetime = 1500; this.heartParticles = [];
                         this.createHeartParticles();
                     }
                     createHeartParticles() {
@@ -578,9 +658,7 @@
                     update(deltaTime) {
                         var elapsed = frameNow - this.createdAt;
                         var hp = this.heartParticles;
-                        for (var i = hp.length - 1; i >= 0; i--) {
-                            hp[i].update(deltaTime, elapsed);
-                        }
+                        for (var i = hp.length - 1; i >= 0; i--) hp[i].update(deltaTime, elapsed);
                         return elapsed < this.lifetime;
                     }
                     draw(ctx) {
@@ -591,30 +669,19 @@
 
                 class SimplifiedHeartParticle {
                     constructor(x, y, colorConfig, explosionPower, phase) {
-                        this.originalX = x;
-                        this.originalY = y;
-                        this.colorConfig = colorConfig;
-                        this.baseSize = random(1.5, 2.5);
-                        this.currentSize = this.baseSize;
-                        this.life = 1.0;
-                        this.t = phase;
-                        this.scale = 5.5 * explosionPower;
-                        this.twinkleSpeed = random(0.8, 1.5);
-                        this.twinklePhase = random(0, Math.PI * 2);
-                        this.twinkleAmount = random(0.1, 0.2);
-                        this.x = x;
-                        this.y = y;
+                        this.originalX = x; this.originalY = y; this.colorConfig = colorConfig;
+                        this.baseSize = random(1.5, 2.5); this.currentSize = this.baseSize;
+                        this.life = 1.0; this.t = phase; this.scale = 5.5 * explosionPower;
+                        this.twinkleSpeed = random(0.8, 1.5); this.twinklePhase = random(0, Math.PI * 2);
+                        this.twinkleAmount = random(0.1, 0.2); this.x = x; this.y = y;
                         var hue = colorConfig.hue, sat = colorConfig.saturation, lit = colorConfig.lightness;
                         this._rgb = hslToRgbPrefix(hue, sat, lit);
                         this._dualRgb = colorConfig.type === 'dual' ? hslToRgbPrefix(colorConfig.secondHue || hue, colorConfig.secondSaturation || sat, colorConfig.secondLightness || lit) : null;
                         this.updatePositionFromParametric();
                     }
                     updatePositionFromParametric() {
-                        var sinT = Math.sin(this.t);
-                        var cosT = Math.cos(this.t);
-                        var cos2T = Math.cos(2 * this.t);
-                        var cos3T = Math.cos(3 * this.t);
-                        var cos4T = Math.cos(4 * this.t);
+                        var sinT = Math.sin(this.t); var cosT = Math.cos(this.t);
+                        var cos2T = Math.cos(2 * this.t); var cos3T = Math.cos(3 * this.t); var cos4T = Math.cos(4 * this.t);
                         var heartX = 16 * sinT * sinT * sinT;
                         var heartY = 13 * cosT - 5 * cos2T - 2 * cos3T - cos4T;
                         this.x = this.originalX + heartX * this.scale;
@@ -622,10 +689,7 @@
                     }
                     update(deltaTime, elapsed) {
                         this.life = Math.max(0, 1 - elapsed / 1500);
-                        if (Math.random() < 0.3) {
-                            this.x += random(-0.8, 0.8);
-                            this.y += random(-0.8, 0.8);
-                        }
+                        if (Math.random() < 0.3) { this.x += random(-0.8, 0.8); this.y += random(-0.8, 0.8); }
                         var twinkle = Math.sin(frameNow * 0.001 * this.twinkleSpeed + this.twinklePhase) * this.twinkleAmount;
                         this.currentSize = this.baseSize * (1 + twinkle) * this.life;
                         return this.life > 0;
@@ -635,52 +699,36 @@
                         var rgb = this._dualRgb && Math.random() > 0.5 ? this._dualRgb : this._rgb;
                         ctx.fillStyle = rgb + alpha + ')';
                         var s = this.currentSize;
-                        if (s < 2) {
-                            ctx.fillRect(this.x - s, this.y - s, s * 2, s * 2);
-                        } else {
-                            ctx.beginPath();
-                            ctx.arc(this.x, this.y, s, 0, 6.2832);
-                            ctx.fill();
-                        }
+                        if (s < 2) { ctx.fillRect(this.x - s, this.y - s, s * 2, s * 2); }
+                        else { ctx.beginPath(); ctx.arc(this.x, this.y, s, 0, 6.2832); ctx.fill(); }
                     }
                 }
 
                 class Meteor {
                     constructor(x, y, colorConfig) {
-                        this.x = x;
-                        this.y = y;
-                        this.speed = random(200, 400);
+                        this.x = x; this.y = y; this.speed = random(200, 400);
                         this.angle = random(Math.PI * 0.15, Math.PI * 0.85);
-                        this.vx = Math.cos(this.angle) * this.speed;
-                        this.vy = Math.sin(this.angle) * this.speed;
-                        this.life = 1.0;
-                        this.decayRate = random(0.2, 0.4);
-                        this.baseSize = random(1.5, 3);
-                        this.currentSize = this.baseSize;
+                        this.vx = Math.cos(this.angle) * this.speed; this.vy = Math.sin(this.angle) * this.speed;
+                        this.life = 1.0; this.decayRate = random(0.2, 0.4);
+                        this.baseSize = random(1.5, 3); this.currentSize = this.baseSize;
                         this.trailX = new Float32Array(isMobile ? 6 : 10);
                         this.trailY = new Float32Array(isMobile ? 6 : 10);
                         this.trailS = new Float32Array(isMobile ? 6 : 10);
-                        this.trailLen = 0;
-                        this.trailMax = isMobile ? 6 : 10;
-                        this.trailHead = 0;
+                        this.trailLen = 0; this.trailMax = isMobile ? 6 : 10; this.trailHead = 0;
                         this._rgb = hslToRgbPrefix(colorConfig.hue, colorConfig.saturation, colorConfig.lightness);
                         this._rgbBright = hslToRgbPrefix(colorConfig.hue, colorConfig.saturation, Math.min(colorConfig.lightness + 15, 100));
                     }
                     update(deltaTime) {
                         var ds = deltaTime / 1000;
                         if (this.trailLen < this.trailMax) {
-                            this.trailX[this.trailLen] = this.x;
-                            this.trailY[this.trailLen] = this.y;
-                            this.trailS[this.trailLen] = this.currentSize * this.life;
-                            this.trailLen++;
+                            this.trailX[this.trailLen] = this.x; this.trailY[this.trailLen] = this.y;
+                            this.trailS[this.trailLen] = this.currentSize * this.life; this.trailLen++;
                         } else {
-                            this.trailX[this.trailHead] = this.x;
-                            this.trailY[this.trailHead] = this.y;
+                            this.trailX[this.trailHead] = this.x; this.trailY[this.trailHead] = this.y;
                             this.trailS[this.trailHead] = this.currentSize * this.life;
                             this.trailHead = (this.trailHead + 1) % this.trailMax;
                         }
-                        this.x += this.vx * ds;
-                        this.y += this.vy * ds;
+                        this.x += this.vx * ds; this.y += this.vy * ds;
                         this.vy += GRAVITY * 0.8 * ds;
                         this.life -= this.decayRate * ds;
                         this.currentSize = this.baseSize * this.life;
@@ -690,8 +738,7 @@
                         var alpha = Math.max(0, this.life);
                         for (var i = 0; i < this.trailLen; i++) {
                             var ratio = i / this.trailLen;
-                            var ta = alpha * ratio * 0.5;
-                            ctx.fillStyle = this._rgbBright + ta + ')';
+                            ctx.fillStyle = this._rgbBright + (alpha * ratio * 0.5) + ')';
                             var ts = this.trailS[i] * ratio;
                             ctx.fillRect(this.trailX[i] - ts, this.trailY[i] - ts, ts * 2, ts * 2);
                         }
@@ -703,23 +750,16 @@
 
                 class FireTreeParticle {
                     constructor(x, y, colorConfig) {
-                        this.x = x;
-                        this.y = y;
-                        this.baseSize = random(1, 2.5);
-                        this.currentSize = this.baseSize;
-                        this.fallSpeed = random(60, 150);
-                        this.vx = random(-30, 30);
-                        this.vy = random(-80, -20);
-                        this.life = 1.0;
-                        this.decayRate = random(0.15, 0.3);
-                        this.sparkTimer = 0;
+                        this.x = x; this.y = y; this.baseSize = random(1, 2.5);
+                        this.currentSize = this.baseSize; this.fallSpeed = random(60, 150);
+                        this.vx = random(-30, 30); this.vy = random(-80, -20);
+                        this.life = 1.0; this.decayRate = random(0.15, 0.3); this.sparkTimer = 0;
                         this._rgb = hslToRgbPrefix(colorConfig.hue, colorConfig.saturation, colorConfig.lightness);
                         this._colorConfig = colorConfig;
                     }
                     update(deltaTime) {
                         var ds = deltaTime / 1000;
-                        this.x += this.vx * ds;
-                        this.y += this.vy * ds;
+                        this.x += this.vx * ds; this.y += this.vy * ds;
                         this.vy += this.fallSpeed * ds;
                         this.vx *= Math.exp(AIR_RES_EXP_CONST * ds);
                         this.life -= this.decayRate * ds;
@@ -728,8 +768,7 @@
                         if (this.sparkTimer > 80 && Math.random() < 0.3 && this.life > 0.3) {
                             this.sparkTimer = 0;
                             var spark = new Particle(this.x, this.y, this._colorConfig, 0.3);
-                            spark.baseSize = random(0.5, 1.2);
-                            spark.decayRate = random(0.4, 0.7);
+                            spark.baseSize = random(0.5, 1.2); spark.decayRate = random(0.4, 0.7);
                             particles.push(spark);
                         }
                         return this.life > 0 && this.y < canvas.height + 50;
@@ -738,53 +777,36 @@
                         var alpha = Math.max(0, this.life);
                         ctx.fillStyle = this._rgb + alpha + ')';
                         var cs = this.currentSize;
-                        if (cs < 2) {
-                            ctx.fillRect(this.x - cs, this.y - cs, cs * 2, cs * 2);
-                        } else {
-                            ctx.beginPath();
-                            ctx.arc(this.x, this.y, cs, 0, 6.2832);
-                            ctx.fill();
-                        }
+                        if (cs < 2) { ctx.fillRect(this.x - cs, this.y - cs, cs * 2, cs * 2); }
+                        else { ctx.beginPath(); ctx.arc(this.x, this.y, cs, 0, 6.2832); ctx.fill(); }
                     }
                 }
 
                 class ChrysanthemumParticle {
                     constructor(x, y, colorConfig, power) {
-                        this.x = x;
-                        this.y = y;
-                        var angle = random(0, Math.PI * 2);
-                        var speed = random(100, 280) * power;
-                        this.vx = Math.cos(angle) * speed;
-                        this.vy = Math.sin(angle) * speed;
-                        this.life = 1.0;
-                        this.decayRate = random(0.06, 0.14);
-                        this.baseSize = random(1.2, 2.5);
-                        this.currentSize = this.baseSize;
+                        this.x = x; this.y = y;
+                        var angle = random(0, Math.PI * 2); var speed = random(100, 280) * power;
+                        this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
+                        this.life = 1.0; this.decayRate = random(0.06, 0.14);
+                        this.baseSize = random(1.2, 2.5); this.currentSize = this.baseSize;
                         this.trailX = new Float32Array(isMobile ? 8 : 14);
                         this.trailY = new Float32Array(isMobile ? 8 : 14);
-                        this.trailLen = 0;
-                        this.trailMax = isMobile ? 8 : 14;
-                        this.trailHead = 0;
+                        this.trailLen = 0; this.trailMax = isMobile ? 8 : 14; this.trailHead = 0;
                         this._rgb = hslToRgbPrefix(colorConfig.hue, colorConfig.saturation, colorConfig.lightness);
                         this._rgbBright = hslToRgbPrefix(colorConfig.hue, colorConfig.saturation, Math.min(colorConfig.lightness + 10, 100));
                     }
                     update(deltaTime) {
                         var ds = deltaTime / 1000;
                         if (this.trailLen < this.trailMax) {
-                            this.trailX[this.trailLen] = this.x;
-                            this.trailY[this.trailLen] = this.y;
-                            this.trailLen++;
+                            this.trailX[this.trailLen] = this.x; this.trailY[this.trailLen] = this.y; this.trailLen++;
                         } else {
-                            this.trailX[this.trailHead] = this.x;
-                            this.trailY[this.trailHead] = this.y;
+                            this.trailX[this.trailHead] = this.x; this.trailY[this.trailHead] = this.y;
                             this.trailHead = (this.trailHead + 1) % this.trailMax;
                         }
-                        this.x += this.vx * ds;
-                        this.y += this.vy * ds;
+                        this.x += this.vx * ds; this.y += this.vy * ds;
                         this.vy += GRAVITY * 0.7 * ds;
                         var airDamp = Math.exp(AIR_RES_EXP_CONST * ds);
-                        this.vx *= airDamp;
-                        this.vy *= airDamp;
+                        this.vx *= airDamp; this.vy *= airDamp;
                         this.life -= this.decayRate * ds;
                         this.currentSize = this.baseSize * this.life;
                         return this.life > 0 && this.y < canvas.height + 50;
@@ -793,8 +815,7 @@
                         var alpha = Math.max(0, this.life);
                         for (var i = 0; i < this.trailLen; i++) {
                             var ratio = i / this.trailLen;
-                            var ta = alpha * ratio * 0.4;
-                            ctx.fillStyle = this._rgbBright + ta + ')';
+                            ctx.fillStyle = this._rgbBright + (alpha * ratio * 0.4) + ')';
                             var ts = this.currentSize * ratio;
                             ctx.fillRect(this.trailX[i] - ts, this.trailY[i] - ts, ts * 2, ts * 2);
                         }
@@ -806,39 +827,31 @@
 
                 class Particle {
                     constructor(x, y, colorConfig, explosionPower, explosionPattern) {
-                        this.x = x;
-                        this.y = y;
+                        this.x = x; this.y = y;
                         this.explosionPower = explosionPower || 1;
                         this.explosionPattern = explosionPattern || 'circle';
                         this.baseSize = random(0.9, 2.3) * (this.explosionPattern.indexOf('SPARKLE') >= 0 ? 0.82 : 0.98);
-                        this.size = this.baseSize;
-                        this.isFireSpark = true;
+                        this.size = this.baseSize; this.isFireSpark = true;
                         this.fireSparkDuration = random(0.12, 0.32);
-                        this.life = 1.0;
-                        this.decayRate = random(0.13, 0.36);
-                        this.verticalWeight = random(0.55, 1.1);
-                        this.createdAt = frameNow;
+                        this.life = 1.0; this.decayRate = random(0.13, 0.36);
+                        this.verticalWeight = random(0.55, 1.1); this.createdAt = frameNow;
                         var baseSpeed = random(185, 350) * this.explosionPower;
                         var angle = random(0, Math.PI * 2);
-                        this.vx = Math.cos(angle) * baseSpeed;
-                        this.vy = Math.sin(angle) * baseSpeed;
+                        this.vx = Math.cos(angle) * baseSpeed; this.vy = Math.sin(angle) * baseSpeed;
                         if (this.explosionPattern === 'sparkle') { this.vx *= 0.65; this.vy *= 0.65; }
                         if (this.explosionPattern.indexOf('PARAMETRIC') < 0) {
-                            this.vx += random(-35, 35);
-                            this.vy += random(-35, 35);
+                            this.vx += random(-35, 35); this.vy += random(-35, 35);
                         }
                         this._rgb = hslToRgbPrefix(colorConfig.hue, colorConfig.saturation, colorConfig.lightness);
                         this._fireSparkRgb = hslToRgbPrefix(60, 100, 88);
                     }
                     update(deltaTime) {
                         var ds = deltaTime / 1000;
-                        this.x += this.vx * ds;
-                        this.y += this.vy * ds;
+                        this.x += this.vx * ds; this.y += this.vy * ds;
                         this.vy += GRAVITY * this.verticalWeight * ds;
                         this.vx += WIND * random(-0.016, 0.016) * ds;
                         var airDamp = Math.exp(AIR_RES_EXP_CONST * ds);
-                        this.vx *= airDamp;
-                        this.vy *= airDamp;
+                        this.vx *= airDamp; this.vy *= airDamp;
                         this.life -= this.decayRate * ds;
                         var aliveTime = (frameNow - this.createdAt) / 1000;
                         if (this.isFireSpark && aliveTime > this.fireSparkDuration) this.isFireSpark = false;
@@ -848,34 +861,21 @@
                     draw(ctx) {
                         var alpha = this.life;
                         if (alpha <= 0) return;
-                        if (this.isFireSpark) {
-                            ctx.fillStyle = this._fireSparkRgb + (alpha * 0.88) + ')';
-                        } else {
-                            ctx.fillStyle = this._rgb + (alpha * 0.82) + ')';
-                        }
+                        if (this.isFireSpark) { ctx.fillStyle = this._fireSparkRgb + (alpha * 0.88) + ')'; }
+                        else { ctx.fillStyle = this._rgb + (alpha * 0.82) + ')'; }
                         var s = this.size;
-                        if (s < 2) {
-                            ctx.fillRect(this.x - s, this.y - s, s * 2, s * 2);
-                        } else {
-                            ctx.beginPath();
-                            ctx.arc(this.x, this.y, s, 0, 6.2832);
-                            ctx.fill();
-                        }
+                        if (s < 2) { ctx.fillRect(this.x - s, this.y - s, s * 2, s * 2); }
+                        else { ctx.beginPath(); ctx.arc(this.x, this.y, s, 0, 6.2832); ctx.fill(); }
                     }
                 }
 
                 class Firework {
                     constructor(x, targetY, colorConfig) {
-                        this.x = x;
-                        this.y = canvas.height;
-                        this.targetY = targetY;
-                        this.colorConfig = colorConfig;
-                        this.speed = random(380, 620);
-                        this.exploded = false;
-                        this.explosionPower = random(1.25, 2.1);
+                        this.x = x; this.y = canvas.height; this.targetY = targetY;
+                        this.colorConfig = colorConfig; this.speed = random(380, 620);
+                        this.exploded = false; this.explosionPower = random(1.25, 2.1);
                         this.explosionPattern = getRandomExplosionPattern();
-                        this.lineLength = random(11, 28);
-                        this.explosionCount = 0;
+                        this.lineLength = random(11, 28); this.explosionCount = 0;
                         this.maxExplosions = isMobile ? randomInt(2, 4) : randomInt(3, 6);
                     }
                     update(deltaTime) {
@@ -888,8 +888,7 @@
                         return false;
                     }
                     explode() {
-                        this.exploded = true;
-                        this.explosionCount++;
+                        this.exploded = true; this.explosionCount++;
                         this.createExplosion(this.x, this.y, this.explosionPower * (isMobile ? 1.0 : 1.2), this.explosionPattern);
                         if (this.explosionCount < this.maxExplosions) {
                             setTimeout(() => { this.createSubsequentExplosion(); }, isMobile ? random(150, 400) : random(120, 350));
@@ -897,8 +896,7 @@
                     }
                     createSubsequentExplosion() {
                         this.explosionCount++;
-                        var distance = random(70, 185);
-                        var angle = random(0, Math.PI * 2);
+                        var distance = random(70, 185); var angle = random(0, Math.PI * 2);
                         var newX = this.x + Math.cos(angle) * distance;
                         var newY = this.y + Math.sin(angle) * distance;
                         this.createExplosion(newX, newY, this.explosionPower * (isMobile ? random(0.5, 0.8) : random(0.6, 0.9)), this.explosionPattern);
@@ -930,17 +928,11 @@
                         if (!this.exploded) {
                             var ly = this.y + this.lineLength;
                             if (ly < canvas.height) {
-                                ctx.strokeStyle = 'rgba(255,255,200,0.55)';
-                                ctx.lineWidth = 1.1;
-                                ctx.beginPath();
-                                ctx.moveTo(this.x, ly);
-                                ctx.lineTo(this.x, this.y);
-                                ctx.stroke();
+                                ctx.strokeStyle = 'rgba(255,255,200,0.55)'; ctx.lineWidth = 1.1;
+                                ctx.beginPath(); ctx.moveTo(this.x, ly); ctx.lineTo(this.x, this.y); ctx.stroke();
                             }
                             ctx.fillStyle = 'rgba(255,255,220,0.85)';
-                            ctx.beginPath();
-                            ctx.arc(this.x, this.y, 2, 0, 6.2832);
-                            ctx.fill();
+                            ctx.beginPath(); ctx.arc(this.x, this.y, 2, 0, 6.2832); ctx.fill();
                         }
                     }
                 }
@@ -972,7 +964,8 @@
                             for (var i = 0; i < count; i++) {
                                 (function(idx) {
                                     setTimeout(function() {
-                                        if (isMobile) { Math.random() > 0.8 ? createSpecialFirework() : createRandomFirework(); } else { Math.random() > 0.6 ? createSpecialFirework() : createRandomFirework(); }
+                                        if (isMobile) { Math.random() > 0.8 ? createSpecialFirework() : createRandomFirework(); }
+                                        else { Math.random() > 0.6 ? createSpecialFirework() : createRandomFirework(); }
                                     }, idx * (isMobile ? 150 : 120));
                                 })(i);
                             }
